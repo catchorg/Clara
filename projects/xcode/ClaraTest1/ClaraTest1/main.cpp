@@ -16,13 +16,42 @@ struct Config
 int main(int argc, const char * argv[])
 {
     Clara::CommandLine<Config> cli;
-    cli.bind( &Config::colour )
-        .describe( "specify a colour" )
-        .shortOpt( "c")
-        .longOpt( "colour" )
-        .hint( "widget colour" );
+//    cli.bind( &Config::colour )
+//        .options( "-c", "--colour" )
+//        .hint( "widget colour" )
+//        .describe( "specify a colour" );
+
+//    cli["-c"]["--colour"]
+//        .hint( "widget color" )
+//        .shortDesc( "specify a colour" )
+//        .details( "specifies a colour" )
+//        .into( &Config::colour );
+//
+    cli.addOpt( "-c", "--colour " )
+        .hint( "widget colour" )
+        .shortDesc( "specify a colour" )
+        .detail( "specifies a colour" )
+        .into( &Config::colour );
+//
+//
+//    cli += "-c, --colour <widget colour>  specify a colour" >> &Config::colour;
+//
+//
+//    cli += Clara::Opt( "-c", "--colour" )
+//            .hint( "widget colour" )
+//            .shortDesc( "specify a colour" )
+//            .details( "specifies a colour" );
+//
+//    cli( &Config::colour )["-c"]["--colour"]
+//        .hint( "widget colour" )
+//        .describe( "specify a colour" );
+//
+//    cli( &Config::colour )[0]
+//        .describe( "specify a colour" );
+
 
     Config cfg = cli.parseInto( argc, argv );
+//    Config cfg = Clara::parse( argc, argv );
 
     std::cout << "Hello, " << cfg.colour << " World!\n";
 }

@@ -39,6 +39,10 @@ namespace Clara {
 
         using namespace ::Clara::Tbc;
 
+        inline bool startsWith( std::string const& str, std::string const& prefix ) {
+            return str.size() >= prefix.size() && str.substr( 0, prefix.size() ) == prefix;
+        }
+
         template<typename T> struct RemoveConstRef{ typedef T type; };
         template<typename T> struct RemoveConstRef<T&>{ typedef T type; };
         template<typename T> struct RemoveConstRef<T const&>{ typedef T type; };
@@ -88,6 +92,7 @@ namespace Clara {
         template<typename ConfigT>
         class BoundArgFunction {
         public:
+            BoundArgFunction() : functionObj( NULL ) {}
             BoundArgFunction( IArgFunction<ConfigT>* _functionObj ) : functionObj( _functionObj ) {}
             BoundArgFunction( BoundArgFunction const& other ) : functionObj( other.functionObj->clone() ) {}
             BoundArgFunction& operator = ( BoundArgFunction const& other ) {
@@ -270,6 +275,7 @@ namespace Clara {
     class CommandLine {
 
         struct Arg {
+            Arg() : position( -1 ) {}
             Arg( Detail::BoundArgFunction<ConfigT> const& _boundField ) : boundField( _boundField ), position( -1 ) {}
 
             bool hasShortName( std::string const& shortName ) const {
@@ -342,6 +348,10 @@ namespace Clara {
 
         class ArgBinder {
         public:
+            ArgBinder( CommandLine* cl )
+            :   m_cl( cl )
+            {}
+
             template<typename F>
             ArgBinder( CommandLine* cl, F f )
             :   m_cl( cl ),
@@ -372,20 +382,45 @@ namespace Clara {
                         m_cl->m_options.push_back( m_arg );
                 }
             }
-            ArgBinder& shortOpt( std::string const& name ) {
-                m_arg.shortNames.push_back( name );
+
+            template<typename F>
+            void into( F f )
+            {
+                m_arg.boundField = Detail::makeBoundField( f );
+            }
+
+            friend void addOptName( ArgBinder& builder, std::string const& optName )
+            {
+                if( optName.empty() )
+                    return;
+                if( Detail::startsWith( optName, "--" ) ) {
+                    if( !builder.m_arg.longName.empty() )
+                        throw std::logic_error( "Only one long opt may be specified. '"
+                            + builder.m_arg.longName
+                            + "' already specified, now attempting to add '"
+                            + optName + "'" );
+                    builder.m_arg.longName = optName.substr( 2 );
+                }
+                else if( Detail::startsWith( optName, "-" ) )
+                    builder.m_arg.shortNames.push_back( optName.substr( 1 ) );
+                else
+                    throw std::logic_error( "option must begin with - or --. Option was: '" + optName + "'" );
+            }
+
+
+            // Can only supply hint after [str] - if it takes an arg
+            ArgBinder& hint( std::string const& hint ) {
+                m_arg.hint = hint;
                 return *this;
             }
-            ArgBinder& longOpt( std::string const& name ) {
-                m_arg.longName = name;
-                return *this;
-            }
-            ArgBinder& describe( std::string const& description ) {
+
+            ArgBinder& shortDesc( std::string const& description ) {
                 m_arg.description = description;
                 return *this;
             }
-            ArgBinder& hint( std::string const& hint ) {
-                m_arg.hint = hint;
+            ArgBinder& detail( std::string const& detail ) {
+//                m_arg.description = description;
+// !TBD
                 return *this;
             }
             ArgBinder& position( int position ) {
@@ -418,6 +453,20 @@ namespace Clara {
         CommandLine& setThrowOnUnrecognisedTokens( bool shouldThrow = true ) {
             m_throwOnUnrecognisedTokens = shouldThrow;
             return *this;
+        }
+
+        ArgBinder addOpt(   std::string const& o1,
+                            std::string const& o2 = std::string(),
+                            std::string const& o3 = std::string(),
+                            std::string const& o4 = std::string(),
+                            std::string const& o5 = std::string()  ) {
+            ArgBinder binder( this );
+            addOptName( binder, o1 );
+            addOptName( binder, o2 );
+            addOptName( binder, o3 );
+            addOptName( binder, o4 );
+            addOptName( binder, o5 );
+            return binder;
         }
 
         template<typename F>
