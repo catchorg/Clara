@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		266C506618C1EAE40062521E /* ClaraTest1.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 266C506518C1EAE40062521E /* ClaraTest1.1 */; };
 		266C506D18C1EB1D0062521E /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 266C506C18C1EB1D0062521E /* main.cpp */; };
+		266C507318C4F6640062521E /* tests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 266C507118C4F6640062521E /* tests.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -29,6 +30,8 @@
 		266C506518C1EAE40062521E /* ClaraTest1.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = ClaraTest1.1; sourceTree = "<group>"; };
 		266C506C18C1EB1D0062521E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		266C506F18C1FF440062521E /* clara.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = clara.h; path = ../../../../srcs/clara.h; sourceTree = "<group>"; };
+		266C507118C4F6640062521E /* tests.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tests.cpp; path = ../../../tests/tests.cpp; sourceTree = "<group>"; };
+		266C507218C4F6640062521E /* tests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tests.h; path = ../../../tests/tests.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,11 +64,21 @@
 		266C506218C1EAE40062521E /* ClaraTest1 */ = {
 			isa = PBXGroup;
 			children = (
+				266C507018C4F6230062521E /* Tests */,
 				266C506F18C1FF440062521E /* clara.h */,
 				266C506C18C1EB1D0062521E /* main.cpp */,
 				266C506518C1EAE40062521E /* ClaraTest1.1 */,
 			);
 			path = ClaraTest1;
+			sourceTree = "<group>";
+		};
+		266C507018C4F6230062521E /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				266C507118C4F6640062521E /* tests.cpp */,
+				266C507218C4F6640062521E /* tests.h */,
+			);
+			name = Tests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -120,6 +133,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				266C506D18C1EB1D0062521E /* main.cpp in Sources */,
+				266C507318C4F6640062521E /* tests.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

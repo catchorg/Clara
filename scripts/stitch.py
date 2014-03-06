@@ -16,20 +16,20 @@ import string
 
 preprocessorRe = re.compile( r'\s*#.*' )
 
-includesRe = re.compile( r'\s*#include.*' )
-sysIncludesRe = re.compile( r'\s*#include\s*<(.*)>' )
-prjIncludesRe = re.compile( r'\s*#include\s*"(.*)"' )
+includesRe = re.compile( r'\s*#\s*include.*' )
+sysIncludesRe = re.compile( r'\s*#\s*include\s*<(.*)>' )
+prjIncludesRe = re.compile( r'\s*#\s*include\s*"(.*)"' )
 
-defineRe = re.compile( r'\s*#define\s*(\S*)\s+(\S*)' )
-undefRe = re.compile( r'\s*#undef\s*(\S*)' )
+defineRe = re.compile( r'\s*#\s*define\s*(\S*)\s+(\S*)' )
+undefRe = re.compile( r'\s*#\s*undef\s*(\S*)' )
 
-ifdefCommonRe = re.compile( r'\s*#if' )
-stitchGuardRe = re.compile( r'\s*#if\s+!defined\s*\((\S*)\)\s*\|\|\s*defined\s*\(\s*(STITCH_\S*)\s*\)' )
-ifdefRe = re.compile( r'\s*#ifdef\s*(\S*)' )
-ifndefRe = re.compile( r'\s*#ifndef\s*(\S*)' )
-endifRe = re.compile( r'\s*#endif(.*)' )
-elseRe = re.compile( r'\s*#else' )
-ifRe = re.compile( r'\s*#if\s+(.*)' )
+ifdefCommonRe = re.compile( r'\s*#\s*if' )
+stitchGuardRe = re.compile( r'\s*#\s*if\s+!defined\s*\((\S*)\)\s*\|\|\s*defined\s*\(\s*(STITCH_\S*)\s*\)' )
+ifdefRe = re.compile( r'\s*#\s*ifdef\s*(\S*)' )
+ifndefRe = re.compile( r'\s*#\s*ifndef\s*(\S*)' )
+endifRe = re.compile( r'\s*#\s*endif(.*)' )
+elseRe = re.compile( r'\s*#\s*else' )
+ifRe = re.compile( r'\s*#\s*if\s+(.*)' )
 
 rootPath = os.path.dirname(os.path.realpath( os.path.dirname(sys.argv[0])))
 srcsPath = os.path.join( rootPath, 'srcs' )
