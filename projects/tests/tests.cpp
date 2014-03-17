@@ -52,8 +52,7 @@ TEST_CASE( "cmdline" ) {
 
     cli["-o"]["--output"]
         .describe( "specifies output file" )
-        .placeholder( "filename" )
-        .into( &TestOpt::fileName );
+        .bind( &TestOpt::fileName, "filename" );
 
     SECTION( "process name" ) {
         char const * argv[] = { "test", "-o filename.ext" };
@@ -87,8 +86,7 @@ TEST_CASE( "cmdline" ) {
     }
 
     cli["-n"]
-        .placeholder( "an integral value" )
-        .into( &TestOpt::number );
+        .bind( &TestOpt::number, "an integral value" );
 
     SECTION( "a number" ) {
         const char* argv[] = { "test", "-n 42" };
@@ -111,8 +109,7 @@ TEST_CASE( "cmdline" ) {
 
         cli2["-d"]["--description"]
             .describe( "description" )
-            .placeholder( "some text" )
-            .into( &TestOpt2::description );
+            .bind( &TestOpt2::description, "some text" );
 
         const char* argv[] = { "test", "-n 42", "-d some text" };
         std::vector<Clara::Parser::Token> unusedTokens = parseInto( cli, argv, config1 );
@@ -127,8 +124,7 @@ TEST_CASE( "cmdline" ) {
     SECTION( "methods" ) {
         cli["-i"]
             .describe( "An index, which is an integer between 0 and 10, inclusive" )
-            .placeholder( "index" )
-            .into( &TestOpt::setValidIndex );
+            .bind( &TestOpt::setValidIndex, "index" );
 
         SECTION( "in range" ) {
             const char* argv[] = { "test", "-i 3" };
@@ -146,7 +142,7 @@ TEST_CASE( "cmdline" ) {
     SECTION( "flags" ) {
         cli["-f"]
             .describe( "A flag" )
-            .into( &TestOpt::flag );
+            .bind( &TestOpt::flag );
 
         SECTION( "set" ) {
             const char* argv[] = { "test", "-f" };
@@ -166,18 +162,14 @@ TEST_CASE( "cmdline" ) {
 
         cli[2]
             .describe( "Second position" )
-            .placeholder( "second arg" )
-            .into( &TestOpt::secondPos );
+            .bind( &TestOpt::secondPos, "second arg" );
         cli[_]
-            .placeholder( "any arg" )
-            .describe( "Unpositional" )
-            .into( &TestOpt::unpositional );
+            .bind( &TestOpt::unpositional, "Unpositional" );
         cli[1]
             .describe( "First position" )
-            .placeholder( "first arg" )
-            .into( &TestOpt::firstPos );
+            .bind( &TestOpt::firstPos, "first arg" );
 
-//        std::cout << cli.usage( "testApp" ) << std::endl;
+        std::cout << cli.usage( "testApp" ) << std::endl;
 
         const char* argv[] = { "test", "-f", "1st", "-o", "filename", "2nd", "3rd" };
         parseInto( cli, argv, config );
@@ -188,5 +180,12 @@ TEST_CASE( "cmdline" ) {
     }
 }
 
+TEST_CASE( "Invalid parsers", "[.]" )
+{
+    TestOpt config;
+    Clara::CommandLine<TestOpt> cli;
+    cli.bindProcessName( &TestOpt::processName );
+
+}
 
 #endif

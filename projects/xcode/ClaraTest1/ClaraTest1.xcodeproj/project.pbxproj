@@ -31,7 +31,6 @@
 		266C506C18C1EB1D0062521E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		266C506F18C1FF440062521E /* clara.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = clara.h; path = ../../../../srcs/clara.h; sourceTree = "<group>"; };
 		266C507118C4F6640062521E /* tests.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tests.cpp; path = ../../../tests/tests.cpp; sourceTree = "<group>"; };
-		266C507218C4F6640062521E /* tests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tests.h; path = ../../../tests/tests.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,7 +75,6 @@
 			isa = PBXGroup;
 			children = (
 				266C507118C4F6640062521E /* tests.cpp */,
-				266C507218C4F6640062521E /* tests.h */,
 			);
 			name = Tests;
 			sourceTree = "<group>";

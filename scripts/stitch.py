@@ -186,6 +186,8 @@ class FileParser:
     def writeLine( self, line ):
         o.write( line.rstrip() + "\n" )
 
+print( "from: " + firstHeaderPath )
+print( "from: " + outPath )
 p = FileParser( firstHeaderPath )
 p.parse()
 
