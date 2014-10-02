@@ -464,7 +464,7 @@ namespace Clara {
             m_throwOnUnrecognisedTokens( other.m_throwOnUnrecognisedTokens )
         {
             if( other.m_floatingArg.get() )
-                m_floatingArg = ArgAutoPtr( new Arg( *other.m_floatingArg ) );
+                m_floatingArg.reset( new Arg( *other.m_floatingArg ) );
         }
 
         CommandLine& setThrowOnUnrecognisedTokens( bool shouldThrow = true ) {
@@ -493,7 +493,7 @@ namespace Clara {
         ArgBuilder operator[]( UnpositionalTag ) {
             if( m_floatingArg.get() )
                 throw std::logic_error( "Only one unpositional argument can be added" );
-            m_floatingArg = ArgAutoPtr( new Arg() );
+            m_floatingArg.reset( new Arg() );
             ArgBuilder builder( m_floatingArg.get() );
             return builder;
         }
@@ -635,7 +635,7 @@ namespace Clara {
                 if( it == itEnd ) {
                     if( token.type == Parser::Token::Positional || !m_throwOnUnrecognisedTokens )
                         unusedTokens.push_back( token );
-                    else if( m_throwOnUnrecognisedTokens )
+                    else if( errors.empty() && m_throwOnUnrecognisedTokens )
                         errors.push_back( "unrecognised option: " + token.data );
                 }
             }
