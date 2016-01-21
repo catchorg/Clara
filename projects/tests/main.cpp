@@ -1,3 +1,9 @@
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+
+#define CLARA_CONFIG_MAIN
+#include "clara.h"
+
 //#include "clara.h"
 //
 //#include <iostream>

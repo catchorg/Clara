@@ -6,6 +6,8 @@
  *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
  */
 
+// Version 0.0.1.0
+
 // Only use header guard if we are not using an outer namespace
 #if !defined(TWOBLUECUBES_CLARA_H_INCLUDED) || defined(STITCH_CLARA_OPEN_NAMESPACE)
 
@@ -237,7 +239,7 @@ namespace Clara {
             std::string data;
         };
 
-        void parseIntoTokens( int argc, char const * const * argv, std::vector<Parser::Token>& tokens ) const {
+        void parseIntoTokens( int argc, char const* const argv[], std::vector<Parser::Token>& tokens ) const {
             const std::string doubleDash = "--";
             for( int i = 1; i < argc && argv[i] != doubleDash; ++i )
                 parseIntoTokens( argv[i] , tokens);
@@ -578,13 +580,13 @@ namespace Clara {
             return oss.str();
         }
 
-        ConfigT parse( int argc, char const * const * argv ) const {
+        ConfigT parse( int argc, char const* const argv[] ) const {
             ConfigT config;
             parseInto( argc, argv, config );
             return config;
         }
 
-        std::vector<Parser::Token> parseInto( int argc, char const * const * argv, ConfigT& config ) const {
+        std::vector<Parser::Token> parseInto( int argc, char const* argv[], ConfigT& config ) const {
             std::string processName = argv[0];
             std::size_t lastSlash = processName.find_last_of( "/\\" );
             if( lastSlash != std::string::npos )

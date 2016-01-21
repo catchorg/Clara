@@ -5,11 +5,9 @@
  *  Distributed under the Boost Software License, Version 1.0. (See accompanying
  *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
  */
-#define CLARA_CONFIG_MAIN
-#include "clara.h"
 
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
+#include "clara.h"
 
 
 // Helper to deduce size from array literals and pass on to parser
@@ -59,7 +57,7 @@ TEST_CASE( "cmdline" ) {
     cli["-n"]
         .bind( &TestOpt::number, "an integral value" );
     cli["-i"]
-        .describe( "An index, which is an integer between 0 and 10, inclusive" )
+        .describe( "An index, which is an integer between 0 and 10, inclusive" )    
         .bind( &TestOpt::setValidIndex, "index" );
     cli["-f"]
         .describe( "A flag" )
