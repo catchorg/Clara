@@ -373,18 +373,11 @@ namespace Clara {
                 convertInto( stringValue, value );
                 function( obj, value );
             }
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4702) // unreachable code (lines following convertInto(bool, T&) invocation)
-#endif
             virtual void setFlag( C& obj ) const {
                 typename RemoveConstRef<T>::type value;
                 convertInto( true, value );
                 function( obj, value );
             }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
             virtual bool takesArg() const { return !IsBool<T>::value; }
             virtual IArgFunction<C>* clone() const { return new BoundBinaryFunction( *this ); }
             void (*function)( C&, T );
