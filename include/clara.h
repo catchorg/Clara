@@ -221,6 +221,9 @@ namespace Clara {
         template<typename T>    struct IsBool       { static const bool value = false; };
         template<>              struct IsBool<bool> { static const bool value = true; };
 
+        // This is just to avoid compiler warnings (e.g. unreachable code).
+        inline bool isTrue( bool value ) { return value; }
+
         template<typename T>
         void convertInto( std::string const& _source, T& _dest ) {
             std::stringstream ss;
@@ -247,7 +250,8 @@ namespace Clara {
         }
         template<typename T>
         inline void convertInto( bool, T& ) {
-            throw std::runtime_error( "Invalid conversion" );
+            if (isTrue(true))
+                throw std::runtime_error( "Invalid conversion" );
         }
 
         template<typename ConfigT>
