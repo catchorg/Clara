@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 // Use optional outer namespace
 #ifdef STITCH_TBC_TEXT_FORMAT_OUTER_NAMESPACE
