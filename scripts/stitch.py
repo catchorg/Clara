@@ -20,6 +20,7 @@ includesRe = re.compile( r'\s*#\s*include.*' )
 sysIncludesRe = re.compile( r'\s*#\s*include\s*<(.*)>' )
 prjIncludesRe = re.compile( r'\s*#\s*include\s*"(.*)"' )
 
+fdefineRe = re.compile( r'\s*#\s*define\s*(\S*)\s*\(' )
 defineRe = re.compile( r'\s*#\s*define\s*(\S*)\s+(\S*)' )
 undefRe = re.compile( r'\s*#\s*undef\s*(\S*)' )
 
@@ -89,12 +90,12 @@ class FileParser:
                 self.writeLine( "" )
                 projectHeaders.add( headerFile )
                 
-                dir = os.path.dirname( self.filename )
+                dir, filename = os.path.split( self.filename )
                 headerPath = os.path.join( dir, headerFile )
                 p = FileParser( headerPath )
                 p.parse()
                 self.writeLine( '\n// ----------- end of #include from {0} -----------'.format( headerFile ) )
-                self.writeLine( '// ........... back in {0}'.format( self.filename ) )
+                self.writeLine( '// ........... back in {0}'.format( filename ) )
                 self.writeLine( "" )
 
     def handleNonIncludePP( self, line ):
@@ -111,7 +112,10 @@ class FileParser:
         if suppressUntilLevel > level:
             m = defineRe.match( line )
             if m:
-                self.handleDefine( m.group(1), m.group(2) )
+                if fdefineRe.match( line ):
+                    self.writeLine( line )
+                else:
+                    self.handleDefine( m.group(1), m.group(2) )
             m = undefRe.match( line )
             if m:
                 self.handleUndef( m.group(1) )
