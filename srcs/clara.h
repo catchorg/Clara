@@ -56,6 +56,9 @@ namespace Clara {
     const unsigned int consoleWidth = 80;
 #endif
 
+        // Use this to try and stop compiler from warning about unreachable code
+        inline bool isTrue( bool value ) { return value; }
+        
         using namespace Tbc;
 
         inline bool startsWith( std::string const& str, std::string const& prefix ) {
@@ -96,12 +99,17 @@ namespace Clara {
         }
         template<typename T>
         inline void convertInto( bool, T& ) {
-            throw std::runtime_error( "Invalid conversion" );
+            if( isTrue( true ) )
+                throw std::runtime_error( "Invalid conversion" );
         }
 
         template<typename ConfigT>
         struct IArgFunction {
             virtual ~IArgFunction() {}
+#ifdef CLARA_CONFIG_CPP11_GENERATED_METHODS
+            IArgFunction()                      = default;
+            IArgFunction( IArgFunction const& ) = default;
+#endif
             virtual void set( ConfigT& config, std::string const& value ) const = 0;
             virtual void setFlag( ConfigT& config ) const = 0;
             virtual bool takesArg() const = 0;
