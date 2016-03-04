@@ -17,7 +17,7 @@ $(CLARA_H): $(wildcard $(ROOT_DIR)/srcs/*.h)
 	$(PYTHON) $(ROOT_DIR)/scripts/stitch.py
 
 $(TEST_PROGRAM): $(OBJECTS)
-	$(CXX) -o $@ $^
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 check: $(TEST_PROGRAM)
 	./$<
