@@ -116,7 +116,12 @@ TEST_CASE( "cmdline" ) {
 
         CHECK( config.number == 0 );
     }
-    
+
+    SECTION( "parse" ) {
+        const char* argv[] = { "test" };
+        const TestOpt other = cli.parse(1, argv);
+    }
+
     SECTION( "two parsers" ) {
 
         TestOpt config1;

@@ -590,7 +590,7 @@ namespace Clara {
             return config;
         }
 
-        std::vector<Parser::Token> parseInto( int argc, char const* argv[], ConfigT& config ) const {
+        std::vector<Parser::Token> parseInto( int argc, char const* const argv[], ConfigT& config ) const {
             std::string processName = argv[0];
             std::size_t lastSlash = processName.find_last_of( "/\\" );
             if( lastSlash != std::string::npos )
