@@ -11,6 +11,7 @@
 #define TBC_TEXT_FORMAT_H_INCLUDED
 #endif
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -23,17 +24,36 @@ namespace STITCH_TBC_TEXT_FORMAT_OUTER_NAMESPACE {
 
 namespace Tbc {
 
-#ifdef TBC_TEXT_FORMAT_CONSOLE_WIDTH
-    const unsigned int consoleWidth = TBC_TEXT_FORMAT_CONSOLE_WIDTH;
-#else
-    const unsigned int consoleWidth = 80;
-#endif
-
     struct TextAttributes {
+        static std::size_t getDefaultWidth() {
+#ifdef TBC_TEXT_FORMAT_CONSOLE_WIDTH
+            return TBC_TEXT_FORMAT_CONSOLE_WIDTH;
+#else
+            static std::size_t width = 0;
+
+            if( !width ) {
+                // Determining the real console width is not trivial as it
+                // needs to be done in different ways for different platforms,
+                // so we rely on the standard environment variable instead.
+                if( char const* const colstr = std::getenv("COLUMNS") ) {
+                    int const colnum = std::atoi(colstr);
+                    if( colnum > 0 )
+                        width = static_cast<std::size_t>(colnum);
+                }
+
+                // Fall back to the hard-coded default.
+                if( !width )
+                    width = 80;
+            }
+
+            return width;
+#endif
+        }
+
         TextAttributes()
         :   initialIndent( std::string::npos ),
             indent( 0 ),
-            width( consoleWidth-1 ),
+            width( getDefaultWidth()-1 ),
             tabChar( '\t' )
         {}
 
