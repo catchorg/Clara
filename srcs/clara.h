@@ -50,12 +50,6 @@ namespace Clara {
 
     namespace Detail {
 
-#ifdef CLARA_CONSOLE_WIDTH
-    const unsigned int consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
-#else
-    const unsigned int consoleWidth = 80;
-#endif
-
         // Use this to try and stop compiler from warning about unreachable code
         inline bool isTrue( bool value ) { return value; }
         
@@ -513,7 +507,10 @@ namespace Clara {
             m_boundProcessName = new Detail::BoundUnaryMethod<C,M>( _unaryMethod );
         }
 
-        void optUsage( std::ostream& os, std::size_t indent = 0, std::size_t width = Detail::consoleWidth ) const {
+        void optUsage( std::ostream& os, std::size_t indent = 0, std::size_t width = 0 ) const {
+            if( !width )
+                width = Detail::TextAttributes::getDefaultWidth();
+
             typename std::vector<Arg>::const_iterator itBegin = m_options.begin(), itEnd = m_options.end(), it;
             std::size_t maxWidth = 0;
             for( it = itBegin; it != itEnd; ++it )
