@@ -253,30 +253,79 @@ namespace Clara {
             for( int i = 1; i < argc && argv[i] != doubleDash; ++i )
                 parseIntoTokens( argv[i] , tokens);
         }
-        void parseIntoTokens( std::string arg, std::vector<Parser::Token>& tokens ) const {
-            while( !arg.empty() ) {
-                Parser::Token token( Parser::Token::Positional, arg );
-                arg = "";
-                if( token.data[0] == '-' ) {
-                    if( token.data.size() > 1 && token.data[1] == '-' ) {
-                        token = Parser::Token( Parser::Token::LongOpt, token.data.substr( 2 ) );
-                    }
-                    else {
-                        token = Parser::Token( Parser::Token::ShortOpt, token.data.substr( 1 ) );
-                        if( token.data.size() > 1 && separators.find( token.data[1] ) == std::string::npos ) {
-                            arg = "-" + token.data.substr( 1 );
-                            token.data = token.data.substr( 0, 1 );
+        void parseIntoTokens( std::string arg, std::vector<Token>& tokens ) const {
+            enum Mode { None, MaybeShortOpt, SlashOpt, ShortOpt, LongOpt, Positional };
+            Mode mode = None;
+            size_t from = 0;
+            bool inQuotes = false;
+            for( size_t i = 0; i <= arg.size(); ++i ) {
+                char c = arg[i];
+                if( c == '"' )
+                    inQuotes = !inQuotes;
+                switch( mode ) {
+                    case None:
+                        from = i;
+                        if( inQuotes )
+                            mode = Positional;
+                        else
+                            switch( c ) {
+                                case '-': mode = MaybeShortOpt; break;
+                                case '/': mode = SlashOpt; from = i+1; break;
+                                default: if( c != 0 ) mode = Positional; break;
+                            }
+                        break;
+                    case MaybeShortOpt:
+                        switch( c ) {
+                            case '-': mode = LongOpt; from = i+1; break;
+                            default: mode = ShortOpt; from = i; break;
                         }
-                    }
+                        break;
+                    case ShortOpt:
+                    case LongOpt:
+                    case SlashOpt:
+                        switch( c ) {
+                            case ' ':
+                            case '\t':
+                            case ':':
+                            case '=':
+                            case '\0':
+                                {
+                                    std::string optName = arg.substr( from, i-from );
+                                    if( mode == ShortOpt )
+                                    {
+                                        for( size_t j = 0; j < optName.size(); ++j )
+                                            tokens.push_back( Token( Token::ShortOpt, optName.substr( j, 1 ) ) );
+                                    }
+                                    else if( mode == SlashOpt && optName.size() == 1 )
+                                    {
+                                        tokens.push_back( Token( Token::ShortOpt, optName ) );
+                                    }
+                                    else
+                                    {
+                                        tokens.push_back( Token( Token::LongOpt, optName ) );
+                                    }
+                                    mode = None;
+                                    break;
+                                }                                
+                            default:
+                                break;
+                        }
+                        break;
+                    case Positional:
+                        switch( c ) {
+                            case ' ':
+                            case '\t':
+                            case '\0':
+                            {
+                                std::string data = arg.substr( from, i-from );
+                                tokens.push_back( Token( Token::Positional, data ) );
+                                mode = None;
+                                break;
+                            }
+                            default:
+                                break;
+                        }
                 }
-                if( token.type != Parser::Token::Positional ) {
-                    std::size_t pos = token.data.find_first_of( separators );
-                    if( pos != std::string::npos ) {
-                        arg = token.data.substr( pos+1 );
-                        token.data = token.data.substr( 0, pos );
-                    }
-                }
-                tokens.push_back( token );
             }
         }
         std::string separators;

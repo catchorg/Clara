@@ -79,6 +79,12 @@ TEST_CASE( "cmdline" ) {
         
         CHECK( config.processName == "test" );
     }
+    SECTION( "args" ) {
+        char const * argv[] = { "test", "-o", "filename.ext" };
+        parseInto( cli, argv, config );
+        
+        CHECK( config.fileName == "filename.ext" );
+    }
     SECTION( "arg separated by spaces" ) {
         char const * argv[] = { "test", "-o filename.ext" };
         parseInto( cli, argv, config );
@@ -127,10 +133,10 @@ TEST_CASE( "cmdline" ) {
             .describe( "description" )
             .bind( &TestOpt2::description, "some text" );
 
-        const char* argv[] = { "test", "-n 42", "-d some text" };
+        const char* argv[] = { "test", "-n 42", "-d some-text" };
         std::vector<Clara::Parser::Token> unusedTokens = parseInto( cli2, argv, config2 );
 
-        CHECK( config2.description == "some text" );        
+        CHECK( config2.description == "some-text" );
 
         REQUIRE_FALSE( unusedTokens.empty() );
         cli.populate( unusedTokens, config1 );
@@ -166,6 +172,13 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE( config.flag == false );
         }
+        // !TBD
+//        SECTION( "forward slash" ) {
+//            const char* argv[] = { "test", "/f" };
+//            parseInto( cli, argv, config );
+//            
+//            REQUIRE( config.flag );
+//        }
     }
     SECTION( "positional" ) {
 
