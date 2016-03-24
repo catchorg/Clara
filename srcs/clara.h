@@ -57,7 +57,11 @@ namespace Clara {
 #endif
 
         // Use this to try and stop compiler from warning about unreachable code
-        inline bool isTrue( bool value ) { return value; }
+#ifdef CLARA_CONFIG_MAIN
+        bool isTrue( bool value ) { return value; }
+#else
+        bool isTrue( bool value );
+#endif
         
         using namespace Tbc;
 
