@@ -238,8 +238,12 @@ namespace Clara {
 
     } // namespace Detail
 
-    struct Parser {
-        Parser() : separators( " \t=:" ) {}
+    class Parser {
+        enum Mode { None, MaybeShortOpt, SlashOpt, ShortOpt, LongOpt, Positional };
+        Mode mode;
+        size_t from;
+        bool inQuotes;
+    public:
 
         struct Token {
             enum Type { Positional, ShortOpt, LongOpt };
@@ -248,87 +252,72 @@ namespace Clara {
             std::string data;
         };
 
-        void parseIntoTokens( int argc, char const* const argv[], std::vector<Parser::Token>& tokens ) const {
+        Parser() : mode( None ), from( 0 ), inQuotes( false ){}
+        
+        void parseIntoTokens( int argc, char const* const argv[], std::vector<Token>& tokens ) {
             const std::string doubleDash = "--";
             for( int i = 1; i < argc && argv[i] != doubleDash; ++i )
                 parseIntoTokens( argv[i] , tokens);
         }
-        void parseIntoTokens( std::string arg, std::vector<Token>& tokens ) const {
-            enum Mode { None, MaybeShortOpt, SlashOpt, ShortOpt, LongOpt, Positional };
-            Mode mode = None;
-            size_t from = 0;
-            bool inQuotes = false;
+
+        void parseIntoTokens( std::string const& arg, std::vector<Token>& tokens ) {
             for( size_t i = 0; i <= arg.size(); ++i ) {
                 char c = arg[i];
                 if( c == '"' )
                     inQuotes = !inQuotes;
-                switch( mode ) {
-                    case None:
-                        from = i;
-                        if( inQuotes )
-                            mode = Positional;
-                        else
-                            switch( c ) {
-                                case '-': mode = MaybeShortOpt; break;
-                                case '/': mode = SlashOpt; from = i+1; break;
-                                default: if( c != 0 ) mode = Positional; break;
-                            }
-                        break;
-                    case MaybeShortOpt:
-                        switch( c ) {
-                            case '-': mode = LongOpt; from = i+1; break;
-                            default: mode = ShortOpt; from = i; break;
-                        }
-                        break;
-                    case ShortOpt:
-                    case LongOpt:
-                    case SlashOpt:
-                        switch( c ) {
-                            case ' ':
-                            case '\t':
-                            case ':':
-                            case '=':
-                            case '\0':
-                                {
-                                    std::string optName = arg.substr( from, i-from );
-                                    if( mode == ShortOpt )
-                                    {
-                                        for( size_t j = 0; j < optName.size(); ++j )
-                                            tokens.push_back( Token( Token::ShortOpt, optName.substr( j, 1 ) ) );
-                                    }
-                                    else if( mode == SlashOpt && optName.size() == 1 )
-                                    {
-                                        tokens.push_back( Token( Token::ShortOpt, optName ) );
-                                    }
-                                    else
-                                    {
-                                        tokens.push_back( Token( Token::LongOpt, optName ) );
-                                    }
-                                    mode = None;
-                                    break;
-                                }                                
-                            default:
-                                break;
-                        }
-                        break;
-                    case Positional:
-                        switch( c ) {
-                            case ' ':
-                            case '\t':
-                            case '\0':
-                            {
-                                std::string data = arg.substr( from, i-from );
-                                tokens.push_back( Token( Token::Positional, data ) );
-                                mode = None;
-                                break;
-                            }
-                            default:
-                                break;
-                        }
-                }
+                mode = handleMode( i, c, arg, tokens );
             }
         }
-        std::string separators;
+        Mode handleMode( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+            switch( mode ) {
+                case None: return handleNone( i, c );
+                case MaybeShortOpt: return handleMaybeShortOpt( i, c );
+                case ShortOpt:
+                case LongOpt:
+                case SlashOpt: return handleOpt( i, c, arg, tokens );
+                case Positional: return handlePositional( i, c, arg, tokens );
+            }
+        }
+        
+        Mode handleNone( size_t i, char c ) {
+            if( inQuotes ) {
+                from = i;
+                return Positional;
+            }
+            switch( c ) {
+                case '-': return MaybeShortOpt;
+                case '/': from = i+1; return SlashOpt;
+                default: from = i; return Positional;
+            }
+        }
+        Mode handleMaybeShortOpt( size_t i, char c ) {
+            switch( c ) {
+                case '-': from = i+1; return LongOpt;
+                default: from = i; return ShortOpt;
+            }
+        }
+        Mode handleOpt( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+            if( std::string( " \t:=\0", 5 ).find( c ) == std::string::npos )
+                return mode;
+            
+            std::string optName = arg.substr( from, i-from );
+            if( mode == ShortOpt )
+                for( size_t j = 0; j < optName.size(); ++j )
+                    tokens.push_back( Token( Token::ShortOpt, optName.substr( j, 1 ) ) );
+            else if( mode == SlashOpt && optName.size() == 1 )
+                tokens.push_back( Token( Token::ShortOpt, optName ) );
+            else
+                tokens.push_back( Token( Token::LongOpt, optName ) );
+            return None;
+        }
+        Mode handlePositional( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+            if( inQuotes || std::string( " \t\0", 3 ).find( c ) == std::string::npos )
+                return mode;
+            
+            std::string data = arg.substr( from, i-from );
+            tokens.push_back( Token( Token::Positional, data ) );
+            return None;
+        }
     };
 
     template<typename ConfigT>

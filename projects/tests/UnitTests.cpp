@@ -102,5 +102,20 @@ TEST_CASE( "parseTokens" ) {
         REQUIRE( tokens[0].data == "abc" );
     }
     
+    SECTION( "positional quotes" ) {
+        parser.parseIntoTokens( "\"abc def\"", tokens );
+        REQUIRE( tokens.size() == 1 );
+        REQUIRE( tokens[0].type == Parser::Token::Positional );
+        REQUIRE( tokens[0].data == "\"abc def\"" );
+    }
+
+    SECTION( "positional quotes 2" ) {
+        parser.parseIntoTokens( "\"abc def\" \"ghi jkl\"", tokens );
+        REQUIRE( tokens.size() == 2 );
+        REQUIRE( tokens[0].type == Parser::Token::Positional );
+        REQUIRE( tokens[0].data == "\"abc def\"" );
+        REQUIRE( tokens[1].type == Parser::Token::Positional );
+        REQUIRE( tokens[1].data == "\"ghi jkl\"" );
+    }
     
 }
