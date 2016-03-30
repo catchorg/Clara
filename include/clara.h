@@ -6,7 +6,7 @@
  *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
  */
 
-// Version 0.0.2.0
+// Version 0.0.2.1
 
 // Only use header guard if we are not using an outer namespace
 #if !defined(TWOBLUECUBES_CLARA_H_INCLUDED) || defined(STITCH_CLARA_OPEN_NAMESPACE)
@@ -366,13 +366,6 @@ namespace Clara {
     const unsigned int consoleWidth = 80;
 #endif
 
-        // Use this to try and stop compiler from warning about unreachable code
-#ifdef CLARA_CONFIG_MAIN
-        bool isTrue( bool value ) { return value; }
-#else
-        bool isTrue( bool value );
-#endif
-
         using namespace Tbc;
 
         inline bool startsWith( std::string const& str, std::string const& prefix ) {
@@ -408,14 +401,7 @@ namespace Clara {
             else
                 throw std::runtime_error( "Expected a boolean value but did not recognise:\n  '" + _source + "'" );
         }
-        inline void convertInto( bool _source, bool& _dest ) {
-            _dest = _source;
-        }
-        template<typename T>
-        inline void convertInto( bool, T& ) {
-            if( isTrue( true ) )
-                throw std::runtime_error( "Invalid conversion" );
-        }
+
 
         template<typename ConfigT>
         struct IArgFunction {
@@ -425,7 +411,6 @@ namespace Clara {
             IArgFunction( IArgFunction const& ) = default;
 #endif
             virtual void set( ConfigT& config, std::string const& value ) const = 0;
-            virtual void setFlag( ConfigT& config ) const = 0;
             virtual bool takesArg() const = 0;
             virtual IArgFunction* clone() const = 0;
         };
@@ -447,9 +432,6 @@ namespace Clara {
             void set( ConfigT& config, std::string const& value ) const {
                 functionObj->set( config, value );
             }
-            void setFlag( ConfigT& config ) const {
-                functionObj->setFlag( config );
-            }
             bool takesArg() const { return functionObj->takesArg(); }
 
             bool isSet() const {
@@ -463,7 +445,6 @@ namespace Clara {
         template<typename C>
         struct NullBinder : IArgFunction<C>{
             virtual void set( C&, std::string const& ) const {}
-            virtual void setFlag( C& ) const {}
             virtual bool takesArg() const { return true; }
             virtual IArgFunction<C>* clone() const { return new NullBinder( *this ); }
         };
@@ -473,9 +454,6 @@ namespace Clara {
             BoundDataMember( M C::* _member ) : member( _member ) {}
             virtual void set( C& p, std::string const& stringValue ) const {
                 convertInto( stringValue, p.*member );
-            }
-            virtual void setFlag( C& p ) const {
-                convertInto( true, p.*member );
             }
             virtual bool takesArg() const { return !IsBool<M>::value; }
             virtual IArgFunction<C>* clone() const { return new BoundDataMember( *this ); }
@@ -487,11 +465,6 @@ namespace Clara {
             virtual void set( C& p, std::string const& stringValue ) const {
                 typename RemoveConstRef<M>::type value;
                 convertInto( stringValue, value );
-                (p.*member)( value );
-            }
-            virtual void setFlag( C& p ) const {
-                typename RemoveConstRef<M>::type value;
-                convertInto( true, value );
                 (p.*member)( value );
             }
             virtual bool takesArg() const { return !IsBool<M>::value; }
@@ -507,9 +480,6 @@ namespace Clara {
                 if( value )
                     (p.*member)();
             }
-            virtual void setFlag( C& p ) const {
-                (p.*member)();
-            }
             virtual bool takesArg() const { return false; }
             virtual IArgFunction<C>* clone() const { return new BoundNullaryMethod( *this ); }
             void (C::*member)();
@@ -524,9 +494,6 @@ namespace Clara {
                 if( value )
                     function( obj );
             }
-            virtual void setFlag( C& p ) const {
-                function( p );
-            }
             virtual bool takesArg() const { return false; }
             virtual IArgFunction<C>* clone() const { return new BoundUnaryFunction( *this ); }
             void (*function)( C& );
@@ -538,11 +505,6 @@ namespace Clara {
             virtual void set( C& obj, std::string const& stringValue ) const {
                 typename RemoveConstRef<T>::type value;
                 convertInto( stringValue, value );
-                function( obj, value );
-            }
-            virtual void setFlag( C& obj ) const {
-                typename RemoveConstRef<T>::type value;
-                convertInto( true, value );
                 function( obj, value );
             }
             virtual bool takesArg() const { return !IsBool<T>::value; }
@@ -981,7 +943,7 @@ namespace Clara {
                                     arg.boundField.set( config, tokens[++i].data );
                             }
                             else {
-                                arg.boundField.setFlag( config );
+                                arg.boundField.set( config, "true" );
                             }
                             break;
                         }
