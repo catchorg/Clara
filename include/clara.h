@@ -552,6 +552,7 @@ namespace Clara {
                 case LongOpt:
                 case SlashOpt: return handleOpt( i, c, arg, tokens );
                 case Positional: return handlePositional( i, c, arg, tokens );
+                default: throw std::logic_error( "Unknown mode" );
             }
         }
 
