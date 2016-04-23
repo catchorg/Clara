@@ -13,7 +13,7 @@
 // Helper to deduce size from array literals and pass on to parser
 template<size_t size, typename ConfigT>
 std::vector<Clara::Parser::Token> parseInto( Clara::CommandLine<ConfigT>& cli, char const * (&argv)[size], ConfigT& config ) {
-    return cli.parseInto( size, argv, config );
+    return cli.parseInto( Clara::argsToVector( size, argv ), config );
 }
 
 
@@ -125,7 +125,7 @@ TEST_CASE( "cmdline" ) {
 
     SECTION( "parse" ) {
         const char* argv[] = { "test" };
-        const TestOpt other = cli.parse(1, argv);
+        const TestOpt other = cli.parse( Clara::argsToVector( 1, argv ) );
     }
 
     SECTION( "two parsers" ) {
@@ -177,13 +177,15 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE( config.flag == false );
         }
-        // !TBD
-//        SECTION( "forward slash" ) {
-//            const char* argv[] = { "test", "/f" };
-//            parseInto( cli, argv, config );
-//            
-//            REQUIRE( config.flag );
-//        }
+
+#ifdef CLARA_PLATFORM_WINDOWS
+        SECTION( "forward slash" ) {
+            const char* argv[] = { "test", "/f" };
+            parseInto( cli, argv, config );
+            
+            REQUIRE( config.flag );
+        }
+#endif
     }
     SECTION( "positional" ) {
 

@@ -6,7 +6,7 @@
  *  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
  */
 
-// Version 0.0.2.2
+// Version 0.0.2.3
 
 // Only use header guard if we are not using an outer namespace
 #if !defined(TWOBLUECUBES_CLARA_H_INCLUDED) || defined(STITCH_CLARA_OPEN_NAMESPACE)
@@ -32,6 +32,11 @@
 #include <algorithm>
 #include <stdexcept>
 #include <memory>
+
+#if defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER)
+#define CLARA_PLATFORM_WINDOWS
+#endif
+
 
 // Use optional outer namespace
 #ifdef STITCH_CLARA_OPEN_NAMESPACE
@@ -204,10 +209,18 @@ namespace Clara {
 
     } // namespace Detail
 
+    inline std::vector<std::string> argsToVector( int argc, char const* const* const argv ) {
+        std::vector<std::string> args( static_cast<std::size_t>( argc ) );
+        for( std::size_t i = 0; i < static_cast<std::size_t>( argc ); ++i )
+            args[i] = argv[i];
+        
+        return args;
+    }
+    
     class Parser {
         enum Mode { None, MaybeShortOpt, SlashOpt, ShortOpt, LongOpt, Positional };
         Mode mode;
-        size_t from;
+        std::size_t from;
         bool inQuotes;
     public:
 
@@ -220,21 +233,21 @@ namespace Clara {
 
         Parser() : mode( None ), from( 0 ), inQuotes( false ){}
         
-        void parseIntoTokens( int argc, char const* const argv[], std::vector<Token>& tokens ) {
+        void parseIntoTokens( std::vector<std::string> const& args, std::vector<Token>& tokens ) {
             const std::string doubleDash = "--";
-            for( int i = 1; i < argc && argv[i] != doubleDash; ++i )
-                parseIntoTokens( argv[i] , tokens);
+            for( std::size_t i = 1; i < args.size() && args[i] != doubleDash; ++i )
+                parseIntoTokens( args[i], tokens);
         }
 
         void parseIntoTokens( std::string const& arg, std::vector<Token>& tokens ) {
-            for( size_t i = 0; i <= arg.size(); ++i ) {
+            for( std::size_t i = 0; i <= arg.size(); ++i ) {
                 char c = arg[i];
                 if( c == '"' )
                     inQuotes = !inQuotes;
                 mode = handleMode( i, c, arg, tokens );
             }
         }
-        Mode handleMode( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+        Mode handleMode( std::size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
             switch( mode ) {
                 case None: return handleNone( i, c );
                 case MaybeShortOpt: return handleMaybeShortOpt( i, c );
@@ -246,30 +259,32 @@ namespace Clara {
             }
         }
         
-        Mode handleNone( size_t i, char c ) {
+        Mode handleNone( std::size_t i, char c ) {
             if( inQuotes ) {
                 from = i;
                 return Positional;
             }
             switch( c ) {
                 case '-': return MaybeShortOpt;
+#ifdef CLARA_PLATFORM_WINDOWS
                 case '/': from = i+1; return SlashOpt;
+#endif
                 default: from = i; return Positional;
             }
         }
-        Mode handleMaybeShortOpt( size_t i, char c ) {
+        Mode handleMaybeShortOpt( std::size_t i, char c ) {
             switch( c ) {
                 case '-': from = i+1; return LongOpt;
                 default: from = i; return ShortOpt;
             }
         }
-        Mode handleOpt( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+        Mode handleOpt( std::size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
             if( std::string( " \t:=\0", 5 ).find( c ) == std::string::npos )
                 return mode;
             
             std::string optName = arg.substr( from, i-from );
             if( mode == ShortOpt )
-                for( size_t j = 0; j < optName.size(); ++j )
+                for( std::size_t j = 0; j < optName.size(); ++j )
                     tokens.push_back( Token( Token::ShortOpt, optName.substr( j, 1 ) ) );
             else if( mode == SlashOpt && optName.size() == 1 )
                 tokens.push_back( Token( Token::ShortOpt, optName ) );
@@ -277,7 +292,7 @@ namespace Clara {
                 tokens.push_back( Token( Token::LongOpt, optName ) );
             return None;
         }
-        Mode handlePositional( size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
+        Mode handlePositional( std::size_t i, char c, std::string const& arg, std::vector<Token>& tokens ) {
             if( inQuotes || std::string( " \t\0", 3 ).find( c ) == std::string::npos )
                 return mode;
             
@@ -589,21 +604,21 @@ namespace Clara {
             return oss.str();
         }
 
-        ConfigT parse( int argc, char const* const argv[] ) const {
+        ConfigT parse( std::vector<std::string> const& args ) const {
             ConfigT config;
-            parseInto( argc, argv, config );
+            parseInto( args, config );
             return config;
         }
 
-        std::vector<Parser::Token> parseInto( int argc, char const* const argv[], ConfigT& config ) const {
-            std::string processName = argv[0];
+        std::vector<Parser::Token> parseInto( std::vector<std::string> const& args, ConfigT& config ) const {
+            std::string processName = args[0];
             std::size_t lastSlash = processName.find_last_of( "/\\" );
             if( lastSlash != std::string::npos )
                 processName = processName.substr( lastSlash+1 );
             m_boundProcessName.set( config, processName );
             std::vector<Parser::Token> tokens;
             Parser parser;
-            parser.parseIntoTokens( argc, argv, tokens );
+            parser.parseIntoTokens( args, tokens );
             return populate( tokens, config );
         }
 
