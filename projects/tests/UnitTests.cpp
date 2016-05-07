@@ -25,7 +25,8 @@ TEST_CASE( "parseTokens" ) {
         REQUIRE( tokens[0].data == "flag" );
     }
     SECTION( "short opt with arg" ) {
-        parser.parseIntoTokens( "-a payload", tokens );
+        parser.parseIntoTokens( "-a", tokens );
+        parser.parseIntoTokens( "payload", tokens );
         REQUIRE( tokens.size() == 2 );
         REQUIRE( tokens[0].type == Parser::Token::ShortOpt );
         REQUIRE( tokens[0].data == "a" );
@@ -34,7 +35,8 @@ TEST_CASE( "parseTokens" ) {
         REQUIRE( tokens[1].data == "payload" );
     }
     SECTION( "long opt with arg" ) {
-        parser.parseIntoTokens( "--arg payload", tokens );
+        parser.parseIntoTokens( "--arg", tokens );
+        parser.parseIntoTokens( "payload", tokens );
         REQUIRE( tokens.size() == 2 );
         REQUIRE( tokens[0].type == Parser::Token::LongOpt );
         REQUIRE( tokens[0].data == "arg" );
@@ -88,7 +90,8 @@ TEST_CASE( "parseTokens" ) {
     }
 
     SECTION( "positional quotes 2" ) {
-        parser.parseIntoTokens( "\"abc def\" \"ghi jkl\"", tokens );
+        parser.parseIntoTokens( "\"abc def\"", tokens );
+        parser.parseIntoTokens( "\"ghi jkl\"", tokens );
         REQUIRE( tokens.size() == 2 );
         REQUIRE( tokens[0].type == Parser::Token::Positional );
         REQUIRE( tokens[0].data == "\"abc def\"" );
@@ -105,7 +108,8 @@ TEST_CASE( "parseTokens" ) {
         REQUIRE( tokens[0].data == "f" );
     }
     SECTION( "long opt with arg, with /" ) {
-        parser.parseIntoTokens( "/a payload", tokens );
+        parser.parseIntoTokens( "/a", tokens );
+        parser.parseIntoTokens( "payload", tokens );
         REQUIRE( tokens.size() == 2 );
         REQUIRE( tokens[0].type == Parser::Token::ShortOpt );
         REQUIRE( tokens[0].data == "a" );

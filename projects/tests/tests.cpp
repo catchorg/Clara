@@ -74,7 +74,7 @@ TEST_CASE( "cmdline" ) {
 
 
     SECTION( "process name" ) {
-        char const * argv[] = { "test", "-o filename.ext" };
+        char const * argv[] = { "test", "-o", "filename.ext" };
         parseInto( cli, argv, config );
         
         CHECK( config.processName == "test" );
@@ -86,7 +86,7 @@ TEST_CASE( "cmdline" ) {
         CHECK( config.fileName == "filename.ext" );
     }
     SECTION( "arg separated by spaces" ) {
-        char const * argv[] = { "test", "-o filename.ext" };
+        char const * argv[] = { "test", "-o", "filename.ext" };
         parseInto( cli, argv, config );
         
         CHECK( config.fileName == "filename.ext" );
@@ -104,20 +104,20 @@ TEST_CASE( "cmdline" ) {
         CHECK( config.fileName == "filename.ext" );
     }
     SECTION( "long opt" ) {
-        const char* argv[] = { "test", "--output %stdout" };
+        const char* argv[] = { "test", "--output", "%stdout" };
         parseInto( cli, argv, config );
 
         CHECK( config.fileName == "%stdout" );
     }
 
     SECTION( "a number" ) {
-        const char* argv[] = { "test", "-n 42" };
+        const char* argv[] = { "test", "-n", "42" };
         parseInto( cli, argv, config );
 
         CHECK( config.number == 42 );
     }
     SECTION( "not a number" ) {
-        const char* argv[] = { "test", "-n forty-two" };
+        const char* argv[] = { "test", "-n", "forty-two" };
         CHECK_THROWS( parseInto( cli, argv, config ) );
 
         CHECK( config.number == 0 );
@@ -138,7 +138,7 @@ TEST_CASE( "cmdline" ) {
             .describe( "description" )
             .bind( &TestOpt2::description, "some text" );
 
-        const char* argv[] = { "test", "-n 42", "-d some-text" };
+        const char* argv[] = { "test", "-n", "42", "-d", "some-text" };
         std::vector<Clara::Parser::Token> unusedTokens = parseInto( cli2, argv, config2 );
 
         CHECK( config2.description == "some-text" );
@@ -151,13 +151,13 @@ TEST_CASE( "cmdline" ) {
     SECTION( "methods" ) {
 
         SECTION( "in range" ) {
-            const char* argv[] = { "test", "-i 3" };
+            const char* argv[] = { "test", "-i", "3" };
             parseInto( cli, argv, config );
 
             REQUIRE( config.index == 3 );
         }
         SECTION( "out of range" ) {
-            const char* argv[] = { "test", "-i 42" };
+            const char* argv[] = { "test", "-i", "42" };
 
             REQUIRE_THROWS( parseInto( cli, argv, config ) );
         }
