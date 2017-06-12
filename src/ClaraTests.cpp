@@ -30,27 +30,27 @@ TEST_CASE( "single parsers" ) {
     REQUIRE( name == "" );
 
     SECTION( "-n" ) {
-        p.parse( Args{ "-n", "Vader" } );
+        p.parse( Args{ "TestApp", "-n", "Vader" } );
         REQUIRE( name == "Vader");
     }
     SECTION( "--name" ) {
-        p.parse( Args{ "--name", "Vader" } );
+        p.parse( Args{ "TestApp", "--name", "Vader" } );
         REQUIRE( name == "Vader");
     }
     SECTION( "-n:" ) {
-        p.parse( Args{ "-n:Vader" } );
+        p.parse( Args{ "TestApp", "-n:Vader" } );
         REQUIRE( name == "Vader");
     }
     SECTION( "-n=" ) {
-        p.parse( Args{ "-n=Vader" } );
+        p.parse( Args{ "TestApp", "-n=Vader" } );
         REQUIRE( name == "Vader");
     }
     SECTION( "no args" ) {
-        p.parse( Args{} );
+        p.parse( Args{ "TestApp" } );
         REQUIRE( name == "");
     }
     SECTION( "different args" ) {
-        p.parse( Args{ "-f" } );
+        p.parse( Args{ "TestApp", "-f" } );
         REQUIRE( name == "");
     }
 }
@@ -67,9 +67,8 @@ TEST_CASE( "Combined parser" ) {
     Config config;
 
     bool showHelp = false;
-    auto parser =
-            ExeName( "TestApp" )
-            + Help( showHelp )
+    auto parser
+            = Help( showHelp )
             + Opt( config.m_rngSeed, "time|value" )
                 ["--rng-seed"]["-r"]
                 ("set a specific seed for random numbers" )
@@ -92,7 +91,7 @@ TEST_CASE( "Combined parser" ) {
         auto usage = oss.str();
         REQUIRE(usage ==
                     "usage:\n"
-                    "  TestApp [<test name|tags|pattern> ... ] options\n"
+                    "  <executable> [<test name|tags|pattern> ... ] options\n"
                     "\n"
                     "where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
@@ -103,7 +102,7 @@ TEST_CASE( "Combined parser" ) {
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
@@ -113,7 +112,7 @@ TEST_CASE( "Combined parser" ) {
         CHECK( showHelp == false );
     }
     SECTION( "help" ) {
-        auto result = parser.parse( Args{ "-?", "-n:NotSet" } );
+        auto result = parser.parse( Args{ "TestApp", "-?", "-n:NotSet" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::ShortCircuitAll );
         CHECK( config.m_name == "" ); // We should never have processed -n:NotSet
@@ -144,7 +143,7 @@ TEST_CASE( "cmdline" ) {
 
 
     auto cli
-            = ExeName( "TestApp" )
+            = ExeName( config.processName )
             + Opt( config.fileName, "filename" )
                  ["-o"]["--output"]
                  ( "specifies output file" )
@@ -168,33 +167,38 @@ TEST_CASE( "cmdline" ) {
             + Arg( config.secondPos, "second arg" )
                 ( "Second position" );
 
+    SECTION( "exe name" ) {
+        auto result = cli.parse( { "TestApp", "-o", "filename.ext" } );
+        CHECK( result );
+        CHECK( config.processName == "TestApp" );
+    }
     SECTION( "args" ) {
-        auto result = cli.parse( { "-o", "filename.ext" } );
+        auto result = cli.parse( { "TestApp", "-o", "filename.ext" } );
         CHECK( result );
         CHECK( config.fileName == "filename.ext" );
     }
     SECTION( "arg separated by colon" ) {
-        auto result = cli.parse( { "-o:filename.ext" } );
+        auto result = cli.parse( { "TestApp", "-o:filename.ext" } );
         CHECK( result );
         CHECK( config.fileName == "filename.ext" );
     }
     SECTION( "arg separated by =" ) {
-        auto result = cli.parse( { "-o=filename.ext" } );
+        auto result = cli.parse( { "TestApp", "-o=filename.ext" } );
         CHECK( result );
         CHECK( config.fileName == "filename.ext" );
     }
     SECTION( "long opt" ) {
-        auto result = cli.parse( { "--output", "%stdout" } );
+        auto result = cli.parse( { "TestApp", "--output", "%stdout" } );
         CHECK( result );
         CHECK( config.fileName == "%stdout" );
     }
     SECTION( "a number" ) {
-        auto result = cli.parse( { "-n", "42" } );
+        auto result = cli.parse( { "TestApp", "-n", "42" } );
         CHECK( result );
         CHECK( config.number == 42 );
     }
     SECTION( "not a number" ) {
-        auto result = cli.parse( { "-n", "forty-two" } );
+        auto result = cli.parse( { "TestApp", "-n", "forty-two" } );
         CHECK( !result );
         CHECK( result.errorMessage() == "Unable to convert 'forty-two' to destination type" );
 
@@ -204,13 +208,13 @@ TEST_CASE( "cmdline" ) {
     SECTION( "methods" ) {
 
         SECTION( "in range" ) {
-            auto result = cli.parse( { "-i", "3" } );
+            auto result = cli.parse( { "TestApp", "-i", "3" } );
             CHECK( result );
 
             REQUIRE( config.index == 3 );
         }
         SECTION( "out of range" ) {
-            auto result = cli.parse( { "-i", "42" } );
+            auto result = cli.parse( { "TestApp", "-i", "42" } );
             CHECK( !result );
             CHECK( result.errorMessage() == "index must be between 0 and 10" );
         }
@@ -219,13 +223,13 @@ TEST_CASE( "cmdline" ) {
     SECTION( "flags" ) {
 
         SECTION("set") {
-            auto result = cli.parse({"-f"});
+            auto result = cli.parse({ "TestApp", "-f" });
             CHECK( result );
 
             REQUIRE(config.flag);
         }
         SECTION("not set") {
-            auto result = cli.parse({});
+            auto result = cli.parse({ "TestApp" });
             CHECK( result );
             CHECK( result.value().type() == ParseResultType::NoMatch);
 
@@ -244,7 +248,7 @@ TEST_CASE( "cmdline" ) {
 
     SECTION( "args" ) {
 
-        auto result = cli.parse( { "-f", "1st", "-o", "filename", "2nd" } );
+        auto result = cli.parse( { "TestApp", "-f", "1st", "-o", "filename", "2nd" } );
         CHECK( result );
 
         REQUIRE( config.firstPos == "1st" );
@@ -262,7 +266,7 @@ TEST_CASE( "Invalid parsers" )
     SECTION( "no options" )
     {
         auto cli = Opt( config.number, "number" );
-        auto result = cli.parse( { "-o", "filename" } );
+        auto result = cli.parse( { "TestApp", "-o", "filename" } );
         CHECK( !result );
         CHECK( result.errorMessage() == "No options supplied to Opt" );
     }
@@ -273,14 +277,14 @@ TEST_CASE( "Multiple flags" ) {
     auto cli = Opt( a )["-a"] + Opt( b )["-b"] + Opt( c )["-c"];
 
     SECTION( "separately" ) {
-        auto result = cli.parse({"-a", "-b", "-c"});
+        auto result = cli.parse({ "TestApp", "-a", "-b", "-c" });
         CHECK(result);
         CHECK(a);
         CHECK(b);
         CHECK(c);
     }
     SECTION( "combined" ) {
-        auto result = cli.parse({"-abc"});
+        auto result = cli.parse({ "TestApp", "-abc" });
         CHECK(result);
         CHECK(a);
         CHECK(b);

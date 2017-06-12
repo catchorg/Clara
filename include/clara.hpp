@@ -13,14 +13,17 @@
 #include <set>
 #include <algorithm>
 
+// !TBD: wire this in
+#ifndef CLARA_CONFIG_CONSOLE_WIDTH
+#define CLARA_CONFIG_CONSOLE_WIDTH 80
+#endif
+
 namespace clara {
 namespace detail {
 
-    // Traits for extracting arg and return type of lambdas, enforcing that they take exactly one argument
+    // Traits for extracting arg and return type of lambdas (for single argument lambdas)
     template<typename L>
-    struct UnaryLambdaTraits : UnaryLambdaTraits<decltype(&L::operator())> {
-        static_assert(UnaryLambdaTraits::isValid, "Supplied lambda must take exactly one argument");
-    };
+    struct UnaryLambdaTraits : UnaryLambdaTraits<decltype(&L::operator())> {};
 
     template<typename ClassT, typename ReturnT, typename... Args>
     struct UnaryLambdaTraits<ReturnT(ClassT::*)(Args...) const> {
@@ -39,15 +42,24 @@ namespace detail {
     // Transport for raw args (copied from main args, or supplied via init list for testing)
     class Args {
         friend TokenStream;
+        std::string m_exeName;
         std::vector<std::string> m_args;
 
     public:
         Args(int argc, char *argv[]) {
+            m_exeName = m_args[0];
             for (int i = 1; i < argc; ++i)
                 m_args.push_back(argv[i]);
         }
 
-        Args(std::initializer_list<std::string> args) : m_args(args) {}
+        Args(std::initializer_list<std::string> args)
+        :   m_exeName( *args.begin() ),
+            m_args( args.begin()+1, args.end() )
+        {}
+
+        auto exeName() const -> std::string {
+            return m_exeName;
+        }
     };
 
     // Wraps a token coming from a token stream. These may not directly correspond to strings as a single string
@@ -276,7 +288,7 @@ namespace detail {
     };
 
     template<typename T>
-    inline auto convertInto(std::string const &source, T &target) -> ParserResult {
+    inline auto convertInto(std::string const &source, T& target) -> ParserResult {
         std::stringstream ss;
         ss << source;
         ss >> target;
@@ -412,6 +424,7 @@ namespace detail {
     struct BoundLambda : BoundValueRefBase {
         L m_lambda;
 
+        static_assert( UnaryLambdaTraits<L>::isValid, "Supplied lambda must take exactly one argument" );
         explicit BoundLambda(L const &lambda) : m_lambda(lambda) {}
 
         auto setValue(std::string const &arg) -> ParserResult override {
@@ -423,7 +436,8 @@ namespace detail {
     struct BoundFlagLambda : BoundFlagRefBase {
         L m_lambda;
 
-        static_assert(std::is_same<typename UnaryLambdaTraits<L>::ArgType, bool>::value, "flags must be boolean");
+        static_assert( UnaryLambdaTraits<L>::isValid, "Supplied lambda must take exactly one argument" );
+        static_assert( std::is_same<typename UnaryLambdaTraits<L>::ArgType, bool>::value, "flags must be boolean" );
 
         explicit BoundFlagLambda(L const &lambda) : m_lambda(lambda) {}
 
@@ -442,12 +456,12 @@ namespace detail {
     public:
         virtual auto validate() const -> Result { return Result::ok(); }
 
-        virtual auto parse(TokenStream const &tokens) const -> InternalParseResult  = 0;
+        virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
 
         virtual auto cardinality() const -> size_t { return 1; }
 
         auto parse(Args const &args) const -> InternalParseResult {
-            return parse(TokenStream(args));
+            return parse( args.exeName(), TokenStream(args));
         }
     };
 
@@ -507,23 +521,46 @@ namespace detail {
     };
 
     class ExeName : public ComposableParserImpl<ExeName> {
-        std::string m_name;
+        std::shared_ptr<std::string> m_name;
+        std::shared_ptr<BoundRefBase> m_ref;
+
+        template<typename LambdaT>
+        static auto makeRef(LambdaT const &lambda) -> std::shared_ptr<BoundRefBase> {
+            return std::make_shared<BoundLambda<LambdaT>>(lambda);
+        }
 
     public:
-        ExeName(std::string const &name) : m_name(name) {}
+        ExeName() : m_name(std::make_shared<std::string>("<executable>")) {}
 
-        auto parse(TokenStream const &tokens) const -> InternalParseResult override {
+        explicit ExeName(std::string &ref) : ExeName() {
+            m_ref = std::make_shared<BoundRef<std::string>>( ref );
+        }
+
+        template<typename LambdaT>
+        explicit ExeName( LambdaT const& lambda ) : ExeName() {
+            m_ref = std::make_shared<BoundLambda<LambdaT>>( lambda );
+        }
+
+        // The exe name is not parsed out of the normal tokens, but is handled specially
+        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
             return InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
         }
 
-        auto name() const -> std::string { return m_name; }
+        auto name() const -> std::string { return *m_name; }
+        auto set( std::string const& newName ) -> ParserResult {
+            *m_name = newName;
+            if( m_ref )
+                return m_ref->setValue( newName );
+            else
+                return ParserResult::ok( ParseResultType::Matched );
+        }
     };
 
     class Arg : public ParserRefImpl<Arg> {
     public:
         using ParserRefImpl::ParserRefImpl;
 
-        auto parse(TokenStream const &tokens) const -> InternalParseResult override {
+        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
             auto result = validate();
             if (!result)
                 return InternalParseResult(result);
@@ -556,9 +593,9 @@ namespace detail {
         using ParserRefImpl::ParserRefImpl;
 
         template<typename LambdaT>
-        explicit Opt(LambdaT const &ref) : ParserRefImpl(std::make_shared<BoundFlagLambda<LambdaT>>(ref)) {}
+        explicit Opt( LambdaT const &ref ) : ParserRefImpl(std::make_shared<BoundFlagLambda<LambdaT>>(ref)) {}
 
-        explicit Opt(bool &ref) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
+        explicit Opt( bool &ref ) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
 
         auto operator[](std::string const &optName) -> Opt & {
             m_optNames.push_back(optName);
@@ -595,7 +632,7 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse(TokenStream const &tokens) const -> InternalParseResult override {
+        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
             auto result = validate();
             if (!result)
                 return InternalParseResult(result);
@@ -643,17 +680,15 @@ namespace detail {
     };
 
     struct Help : Opt {
-        bool &m_showHelp;
-
-        Help(bool &showHelpFlag)
-                : Opt([&](bool flag) {
-            m_showHelp = flag;
-            return ParserResult::ok(ParseResultType::ShortCircuitAll);
-        }),
-                  m_showHelp(showHelpFlag) {
+        Help( bool &showHelpFlag )
+        :   Opt([&]( bool flag ) {
+            showHelpFlag = flag;
+                return ParserResult::ok(ParseResultType::ShortCircuitAll);
+            })
+        {
             static_cast<Opt &>(*this)
                     ("display usage information")
-            ["-?"]["-h"]["--help"]
+                    ["-?"]["-h"]["--help"]
                     .optional();
         }
     };
@@ -661,12 +696,12 @@ namespace detail {
 
     struct Parser : ParserBase {
 
-        std::string m_exeName;
+        mutable ExeName m_exeName;
         std::vector<Opt> m_options;
         std::vector<Arg> m_args;
 
         auto operator+=(ExeName const &exeName) -> Parser & {
-            m_exeName = exeName.name();
+            m_exeName = exeName;
             return *this;
         }
 
@@ -701,8 +736,8 @@ namespace detail {
         }
 
         void writeToStream(std::ostream &os) const {
-            if (!m_exeName.empty()) {
-                os << "usage:\n" << "  " << m_exeName << " ";
+            if (!m_exeName.name().empty()) {
+                os << "usage:\n" << "  " << m_exeName.name() << " ";
                 bool required = true, first = true;
                 for (auto const &arg : m_args) {
                     if (first)
@@ -759,7 +794,7 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse(TokenStream const &tokens) const -> InternalParseResult override {
+        auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult override {
             std::vector<ParserBase const *> allParsers;
             allParsers.reserve(m_args.size() + m_options.size());
             std::set<ParserBase const *> requiredParsers;
@@ -783,11 +818,13 @@ namespace detail {
                 }
             }
 
+            m_exeName.set( exeName );
+
             auto result = InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
             while (result.value().remainingTokens()) {
                 int remainingTokenCount = result.value().remainingTokens().count();
                 for (auto parser : allParsers) {
-                    result = parser->parse(result.value().remainingTokens());
+                    result = parser->parse( exeName, result.value().remainingTokens() );
                     if (!result || result.value().type() != ParseResultType::NoMatch) {
                         if (parser->cardinality() == 1)
                             allParsers.erase(std::remove(allParsers.begin(), allParsers.end(), parser),
