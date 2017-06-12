@@ -1,3 +1,6 @@
+// v1.0
+// See https://github.com/philsquared/Clara
+
 #ifndef CLARA_HPP_INCLUDED
 #define CLARA_HPP_INCLUDED
 
