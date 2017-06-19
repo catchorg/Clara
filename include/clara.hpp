@@ -47,7 +47,7 @@ namespace detail {
 
     public:
         Args(int argc, char *argv[]) {
-            m_exeName = m_args[0];
+            m_exeName = argv[0];
             for (int i = 1; i < argc; ++i)
                 m_args.push_back(argv[i]);
         }
@@ -297,7 +297,10 @@ namespace detail {
         else
             return ParserResult::ok(ParseResultType::Matched);
     }
-
+    inline auto convertInto(std::string const &source, std::string& target) -> ParserResult {
+        target = source;
+        return ParserResult::ok(ParseResultType::Matched);
+    }
     inline auto convertInto(std::string const &source, bool &target) -> ParserResult {
         std::string srcLC = source;
         std::transform(srcLC.begin(), srcLC.end(), srcLC.begin(), ::tolower);
@@ -548,9 +551,15 @@ namespace detail {
 
         auto name() const -> std::string { return *m_name; }
         auto set( std::string const& newName ) -> ParserResult {
-            *m_name = newName;
+
+            auto lastSlash = newName.find_last_of( "\\/" );
+            auto filename = (lastSlash == std::string::npos)
+                    ? newName
+                    : newName.substr( lastSlash+1 );
+
+            *m_name = filename;
             if( m_ref )
-                return m_ref->setValue( newName );
+                return m_ref->setValue( filename );
             else
                 return ParserResult::ok( ParseResultType::Matched );
         }
@@ -560,17 +569,17 @@ namespace detail {
     public:
         using ParserRefImpl::ParserRefImpl;
 
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto result = validate();
-            if (!result)
-                return InternalParseResult(result);
+        auto parse(std::string const &, TokenStream const &tokens) const -> InternalParseResult override {
+            auto validationResult = validate();
+            if (!validationResult)
+                return InternalParseResult(validationResult);
 
             auto remainingTokens = tokens;
             auto const &token = *remainingTokens;
             if (token.type != TokenType::Argument)
                 return InternalParseResult::ok(ParseState(ParseResultType::NoMatch, remainingTokens));
 
-            result = m_ref->setValue(remainingTokens->token);
+            auto result = m_ref->setValue(remainingTokens->token);
             if (!result)
                 return InternalParseResult(result);
             else
