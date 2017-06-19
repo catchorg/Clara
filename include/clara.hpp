@@ -176,8 +176,7 @@ namespace detail {
                 new(&m_value) T(other.m_value);
         }
 
-        ResultValueBase(Type type, T const &value)
-                : ResultBase(Ok) {
+        ResultValueBase(Type, T const &value) : ResultBase(Ok) {
             new(&m_value) T(value);
         }
 
@@ -303,7 +302,7 @@ namespace detail {
     }
     inline auto convertInto(std::string const &source, bool &target) -> ParserResult {
         std::string srcLC = source;
-        std::transform(srcLC.begin(), srcLC.end(), srcLC.begin(), ::tolower);
+        std::transform(srcLC.begin(), srcLC.end(), srcLC.begin(), [](char c) { return static_cast<char>( ::tolower(c) ); } );
         if (srcLC == "y" || srcLC == "1" || srcLC == "true" || srcLC == "yes" || srcLC == "on")
             target = true;
         else if (srcLC == "n" || srcLC == "0" || srcLC == "false" || srcLC == "no" || srcLC == "off")
@@ -641,10 +640,10 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto result = validate();
-            if (!result)
-                return InternalParseResult(result);
+        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
+            auto validationResult = validate();
+            if (!validationResult)
+                return InternalParseResult(validationResult);
 
             auto remainingTokens = tokens;
             if (remainingTokens && remainingTokens->type == TokenType::Option) {
@@ -831,7 +830,7 @@ namespace detail {
 
             auto result = InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
             while (result.value().remainingTokens()) {
-                int remainingTokenCount = result.value().remainingTokens().count();
+                auto remainingTokenCount = result.value().remainingTokens().count();
                 for (auto parser : allParsers) {
                     result = parser->parse( exeName, result.value().remainingTokens() );
                     if (!result || result.value().type() != ParseResultType::NoMatch) {
