@@ -4,6 +4,10 @@
 #ifndef CLARA_HPP_INCLUDED
 #define CLARA_HPP_INCLUDED
 
+#ifndef CLARA_CONFIG_CONSOLE_WIDTH
+#define CLARA_CONFIG_CONSOLE_WIDTH 80
+#endif
+
 #include "TextFlow.hpp"
 
 #include <vector>
@@ -12,11 +16,6 @@
 #include <cassert>
 #include <set>
 #include <algorithm>
-
-// !TBD: wire this in
-#ifndef CLARA_CONFIG_CONSOLE_WIDTH
-#define CLARA_CONFIG_CONSOLE_WIDTH 80
-#endif
 
 namespace clara {
 namespace detail {
@@ -768,6 +767,7 @@ namespace detail {
             }
 
             auto rows = getHelpColumns();
+            size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
             size_t optWidth = 0;
             for (auto const &cols : rows)
                 optWidth = std::max(optWidth, cols.left.size() + 2);
@@ -776,7 +776,7 @@ namespace detail {
                 auto row =
                         TextFlow::Column(cols.left).width(optWidth).indent(2) +
                         TextFlow::Spacer(4) +
-                        TextFlow::Column(cols.right).width(73 - optWidth);
+                        TextFlow::Column(cols.right).width(consoleWidth - 7 - optWidth);
                 os << row << std::endl;
             }
         }
