@@ -153,6 +153,7 @@ namespace detail {
 
     protected:
         ResultBase(Type type) : m_type(type) {}
+        virtual ~ResultBase() = default;
 
         virtual void enforceOk() const = 0;
 
@@ -455,6 +456,8 @@ namespace detail {
 
     class ParserBase {
     public:
+        virtual ~ParserBase() = default;
+
         virtual auto validate() const -> Result { return Result::ok(); }
 
         virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
