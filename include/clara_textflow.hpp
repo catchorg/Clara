@@ -7,20 +7,20 @@
 //
 // This project is hosted at https://github.com/philsquared/textflowcpp
 
-#ifndef TEXTFLOW_HPP_INCLUDED
-#define TEXTFLOW_HPP_INCLUDED
+#ifndef CLARA_TEXTFLOW_HPP_INCLUDED
+#define CLARA_TEXTFLOW_HPP_INCLUDED
 
 #include <cassert>
 #include <ostream>
 #include <sstream>
 #include <vector>
 
-#ifndef TEXTFLOW_CONFIG_CONSOLE_WIDTH
-#define TEXTFLOW_CONFIG_CONSOLE_WIDTH 80
+#ifndef CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
+#define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
 #endif
 
 
-namespace TextFlow
+namespace clara { namespace TextFlow
 {
 
     inline auto isWhitespace( char c ) -> bool {
@@ -316,6 +316,6 @@ namespace TextFlow
         cols += other;
         return cols;
     }
-} // namespace TextFlow
+}} // namespace clara::TextFlow
 
-#endif // TEXTFLOW_HPP_INCLUDED
+#endif // CLARA_TEXTFLOW_HPP_INCLUDED
