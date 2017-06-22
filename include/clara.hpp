@@ -457,11 +457,8 @@ namespace detail {
     class ParserBase {
     public:
         virtual ~ParserBase() = default;
-
         virtual auto validate() const -> Result { return Result::ok(); }
-
         virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
-
         virtual auto cardinality() const -> size_t { return 1; }
 
         auto parse(Args const &args) const -> InternalParseResult {
@@ -600,12 +597,16 @@ namespace detail {
         std::vector<std::string> m_optNames;
 
     public:
-        using ParserRefImpl::ParserRefImpl;
-
         template<typename LambdaT>
         explicit Opt( LambdaT const &ref ) : ParserRefImpl(std::make_shared<BoundFlagLambda<LambdaT>>(ref)) {}
 
         explicit Opt( bool &ref ) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
+
+        template<typename LambdaT>
+        Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
+
+        template<typename T>
+        Opt( T &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
 
         auto operator[](std::string const &optName) -> Opt & {
             m_optNames.push_back(optName);
