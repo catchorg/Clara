@@ -255,7 +255,20 @@ TEST_CASE( "cmdline" ) {
         REQUIRE( config.secondPos == "2nd" );
     }
     SECTION( "usage" ) {
-        std::cout << cli << std::endl;
+        std::ostringstream oss;
+        oss << cli;
+        auto usage = oss.str();
+        REQUIRE(usage ==
+                    "usage:\n"
+                    "  <executable> [<first arg> <second arg>] options\n"
+                    "\n"
+                    "where options are:\n"
+                    "  -o, --output <filename>    specifies output file\n"
+                    "  -n <an integral value>\n"
+                    "  -i <index>                 An index, which is an integer between 0 and 10,\n"
+                    "                             inclusive\n"
+                    "  -f                         A flag\n"
+        );
     }
 }
 
