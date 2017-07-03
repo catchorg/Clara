@@ -239,7 +239,7 @@ TEST_CASE( "cmdline" ) {
 
 #ifdef CLARA_PLATFORM_WINDOWS
     SECTION( "forward slash" ) {
-        auto result = cli.parse( { "/f" } );
+        auto result = cli.parse( { "TestApp", "/f" } );
         CHECK(result);
 
         REQUIRE( config.flag );
