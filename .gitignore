@@ -7,3 +7,4 @@
 .idea/dictionaries/*
 cmake-build-*
 .vs
+*.pyc
