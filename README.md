@@ -6,8 +6,71 @@ Clara is a single-header library.
 
 To use, just `#include "clara.hpp"`
 
-For usage please see the unit tests or look at how it is used in the Catch code-base (catch-lib.net).
-Documentation will be coming soon.
+A parser for a single option can be created like this:
+
+```c++
+int width = 0;
+// ...
+using namespace clara;
+auto cli
+    = Opt( width, "width" )
+        ["-w"]["--width"]
+        ("How wide should it be?");
+```
+
+You can use this parser directly like this:
+
+```c++
+auto result = cli.parse( Args( argc, argv ) );
+if( !result ) {
+    std::cerr << "Error in command line: " << result.errorMessage() << std::endl;
+    exit(1);
+}
+
+// Everything was ok, width will have a value if supplied on command line
+```
+
+Note that exceptions are not used for error handling.
+
+You can combine parsers by composing with `+`, like this:
+
+```c++
+int width = 0;
+std::string name;
+bool doIt = false;
+std::string command;
+auto cli
+    = Opt( width, "width" )
+        ["-w"]["--width"]
+        ("How wide should it be?")
+    + Opt( name, "name" )
+        ["-n"]["--name"]
+        ("By what name should I be known")
+    + Opt( doIt )
+        ["-d"]["--doit"]
+        ("Do the thing" )
+    + Arg( command, "command" )
+        ("which command to run");
+```
+
+`Opt`s specify options that start with a short dash (`-`) or long dash (`--`).
+On Windows forward slashes are also accepted (and automatically interpretted as a short dash).
+Options can be argument taking (such as `-w 42`), in which case the `Opt` takes a second argument - a hint,
+or they are pure flags (such as `-d`), in which case the `Opt` has only one argument - which must be a boolean.
+The option names are provided in one or more sets of square brackets, and a description string can
+be provided in parentheses. The first argument to an `Opt` is any variable, local, global member, of any type
+that can be converted from a string using `std::ostream`.
+
+`Arg`s specify arguments that are not tied to options, and so have no square bracket names. They otherwise work just like `Opt`s.
+
+A, console optimised, usage string can be obtained by inserting the parser into a stream.
+The usage string is built from the information supplied and is formatted for the console width.
+
+As a convenience, the standard help options (`-h`, `--help` and `-?`) can be specified using the `Help` parser,
+which just takes a boolean to bind to.
+
+For more usage please see the unit tests or look at how it is used in the Catch code-base (catch-lib.net).
+Fuller documentation will be coming soon.
 
 Some of the key features:
 
