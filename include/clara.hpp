@@ -331,7 +331,7 @@ namespace detail {
 
         virtual auto isFlag() const -> bool = 0;
 
-        virtual auto isContainer() const -> bool { return false; }
+        virtual auto allowMulti() const -> bool { return false; }
 
         virtual auto setValue(std::string const &arg) -> ParserResult = 0;
 
@@ -375,7 +375,7 @@ namespace detail {
 
         explicit BoundRef(std::vector<T> &ref) : m_ref(ref) {}
 
-        auto isContainer() const -> bool override { return true; }
+        auto allowMulti() const -> bool override { return true; }
 
         auto setValue(std::string const &arg) -> ParserResult override {
             T temp;
@@ -393,6 +393,21 @@ namespace detail {
 
         auto setFlag(bool flag) -> ParserResult override {
             m_ref = flag;
+            return ParserResult::ok(ParseResultType::Matched);
+        }
+    };
+
+    template<typename T>
+    struct BoundMultiFlagRef : BoundFlagRefBase {
+        T &m_ref;
+
+        explicit BoundMultiFlagRef(T &ref) : m_ref(ref) {}
+
+        auto allowMulti() const -> bool override { return true; }
+
+        auto setFlag(bool flag) -> ParserResult override {
+            if (flag)
+                ++m_ref;
             return ParserResult::ok(ParseResultType::Matched);
         }
     };
@@ -516,7 +531,7 @@ namespace detail {
         }
 
         auto cardinality() const -> size_t override {
-            if (m_ref->isContainer())
+            if (m_ref->allowMulti())
                 return 0;
             else
                 return 1;
@@ -605,6 +620,9 @@ namespace detail {
         explicit Opt( LambdaT const &ref ) : ParserRefImpl(std::make_shared<BoundFlagLambda<LambdaT>>(ref)) {}
 
         explicit Opt( bool &ref ) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
+
+         template<typename T>
+         explicit Opt( T &ref ) : ParserRefImpl(std::make_shared<BoundMultiFlagRef<T>>(ref)) {}
 
         template<typename LambdaT>
         Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}

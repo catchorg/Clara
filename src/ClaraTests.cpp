@@ -61,6 +61,7 @@ struct Config {
     std::vector<std::string> m_tests;
     bool m_flag = false;
     double m_value = 0;
+	int m_flagCount = 0;
 };
 
 TEST_CASE( "Combined parser" ) {
@@ -82,6 +83,9 @@ TEST_CASE( "Combined parser" ) {
             + Opt( [&]( double value ){ config.m_value = value; }, "number" )
                 ["-d"]["--double"]
                 ( "just some number" )
+            + Opt( config.m_flagCount )
+                ["-v"]
+                ( "a flag to set multiple times" )
             + Arg( config.m_tests, "test name|tags|pattern" )
                 ( "which test or tests to use" );
 
@@ -99,16 +103,19 @@ TEST_CASE( "Combined parser" ) {
                     "  -n, --name <name>              the name to use\n"
                     "  -f, --flag                     a flag to set\n"
                     "  -d, --double <number>          just some number\n"
+                    "  -v                             a flag to set multiple times\n"
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "-vvv", "test1", "test2" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
         REQUIRE( config.m_name == "Bill" );
         REQUIRE( config.m_value == 123.45 );
         REQUIRE( config.m_tests == std::vector<std::string> { "test1", "test2" } );
+        REQUIRE( config.m_flag );
+        REQUIRE( config.m_flagCount == 3 );
         CHECK( showHelp == false );
     }
     SECTION( "help" ) {
