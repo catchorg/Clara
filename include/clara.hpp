@@ -810,10 +810,15 @@ namespace detail {
 
         auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
 
-            // Keep track of how many instances of each opt/ arg are matched
-            size_t optCounts[m_options.size()], argCounts[m_args.size()];
-            for( auto& c : optCounts ) c = 0;
-            for( auto& c : argCounts ) c = 0;
+            struct ParserInfo {
+                ParserBase const* parser = nullptr;
+                size_t count = 0;
+            };
+            const size_t totalParsers = m_options.size() + m_args.size();
+            ParserInfo parseInfos[totalParsers];
+            size_t i = 0;
+            for( auto const& opt : m_options ) parseInfos[i++].parser = &opt;
+            for( auto const& arg : m_args ) parseInfos[i++].parser = &arg;
 
             m_exeName.set( exeName );
 
@@ -821,31 +826,15 @@ namespace detail {
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
-                if( result.value().remainingTokens()->type == TokenType::Option ) {
-                    for( size_t i = 0; i <  m_options.size(); ++i ) {
-                        auto& optParser = m_options[i];
-                        result = optParser.parse( exeName, result.value().remainingTokens() );
-                        if( !result )
+                for( auto& parseInfo : parseInfos ) {
+                    if( parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality() ) {
+                        result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
+                        if (!result)
                             return result;
-                        if( result.value().type() != ParseResultType::NoMatch ) {
+                        if (result.value().type() != ParseResultType::NoMatch) {
                             tokenParsed = true;
-                            ++optCounts[i];
+                            ++parseInfo.count;
                             break;
-                        }
-                    }
-                }
-                else {
-                    for( size_t i = 0; i <  m_args.size(); ++i ) {
-                        auto& argParser = m_args[i];
-                        if( argParser.cardinality() == 0 || argCounts[i] < argParser.cardinality() ) {
-                            result = argParser.parse( exeName, result.value().remainingTokens() );
-                            if( !result )
-                                return result;
-                            if( result.value().type() != ParseResultType::NoMatch ) {
-                                tokenParsed = true;
-                                ++argCounts[i];
-                                break;
-                            }
                         }
                     }
                 }
