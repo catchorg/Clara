@@ -838,19 +838,24 @@ namespace detail {
 
             auto result = InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
             while (result.value().remainingTokens()) {
-                auto remainingTokenCount = result.value().remainingTokens().count();
+                bool tokenParsed = false;
                 for (auto parser : allParsers) {
                     result = parser->parse( exeName, result.value().remainingTokens() );
-                    if (!result || result.value().type() != ParseResultType::NoMatch) {
-                        if (parser->cardinality() == 1)
+                    if( !result )
+                        return result;
+                    if( result.value().type() != ParseResultType::NoMatch ) {
+                        if( parser->cardinality() == 1 )
                             allParsers.erase(std::remove(allParsers.begin(), allParsers.end(), parser),
                                              allParsers.end());
                         requiredParsers.erase(parser);
+                        tokenParsed = true;
                         break;
                     }
                 }
-                if (!result || remainingTokenCount == result.value().remainingTokens().count())
+                if( result.value().type() == ParseResultType::ShortCircuitAll )
                     return result;
+                if( !tokenParsed )
+                    return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
             // !TBD Check missing required options
             return result;

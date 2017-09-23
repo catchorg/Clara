@@ -6,6 +6,22 @@
 
 using namespace clara;
 
+template<>
+struct Catch::StringMaker<clara::detail::InternalParseResult> {
+    static std::string convert( clara::detail::InternalParseResult const& result ) {
+        switch( result.type() ) {
+            case clara::detail::ResultBase::Ok:
+                return "Ok";
+            case clara::detail::ResultBase::LogicError:
+                return "LogicError '" + result.errorMessage() + "'";
+            case clara::detail::ResultBase::RuntimeError:
+                return "RuntimeError: '" + result.errorMessage() + "'";
+            default:
+                return "Unknow type: " + std::to_string( static_cast<int>( result.type() ) );
+        }
+    }
+};
+
 // !TBD
 // for Catch:
 // error on unrecognised?
@@ -293,4 +309,15 @@ TEST_CASE( "Multiple flags" ) {
         CHECK(b);
         CHECK(c);
     }
+}
+
+TEST_CASE( "Unrecognised opts" ) {
+    using namespace Catch::Matchers;
+
+    bool a = false;
+    auto cli = Parser() + Opt( a )["-a"];
+
+    auto result = cli.parse( { "TestApp", "-b" } );
+    CHECK( !result );
+    CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
