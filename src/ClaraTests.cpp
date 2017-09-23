@@ -129,6 +129,32 @@ struct TestOpt {
     std::string firstPos;
     std::string secondPos;
     std::vector<std::string> unpositional;
+
+    auto makeCli() -> Parser {
+        return ExeName( processName )
+          + Opt( fileName, "filename" )
+              ["-o"]["--output"]
+              ( "specifies output file" )
+          + Opt( number, "an integral value" )
+              ["-n"]
+          + Opt( [&]( int i ) {
+                    if (i < 0 || i > 10)
+                        return ParserResult::runtimeError("index must be between 0 and 10");
+                    else {
+                        index = i;
+                        return ParserResult::ok( ParseResultType::Matched );
+                    }
+                }, "index" )
+              ["-i"]
+              ( "An index, which is an integer between 0 and 10, inclusive" )
+          + Opt( flag )
+              ["-f"]
+              ( "A flag" )
+          + Arg( firstPos, "first arg" )
+              ( "First position" )
+          + Arg( secondPos, "second arg" )
+              ( "Second position" );
+    }
 };
 
 struct TestOpt2 {
@@ -137,35 +163,8 @@ struct TestOpt2 {
 
 TEST_CASE( "cmdline" ) {
 
-    using namespace clara;
-
     TestOpt config;
-
-
-    auto cli
-            = ExeName( config.processName )
-            + Opt( config.fileName, "filename" )
-                 ["-o"]["--output"]
-                 ( "specifies output file" )
-            + Opt( config.number, "an integral value" )
-                ["-n"]
-            + Opt( [&]( int i ) {
-                        if (i < 0 || i > 10)
-                            return ParserResult::runtimeError("index must be between 0 and 10");
-                        else {
-                            config.index = i;
-                            return ParserResult::ok( ParseResultType::Matched );
-                        }
-                    }, "index" )
-                ["-i"]
-                ( "An index, which is an integer between 0 and 10, inclusive" )
-            + Opt( config.flag )
-                ["-f"]
-                ( "A flag" )
-            + Arg( config.firstPos, "first arg" )
-                ( "First position" )
-            + Arg( config.secondPos, "second arg" )
-                ( "Second position" );
+    auto cli = config.makeCli();
 
     SECTION( "exe name" ) {
         auto result = cli.parse( { "TestApp", "-o", "filename.ext" } );
@@ -254,9 +253,13 @@ TEST_CASE( "cmdline" ) {
         REQUIRE( config.firstPos == "1st" );
         REQUIRE( config.secondPos == "2nd" );
     }
-    SECTION( "usage" ) {
-        std::cout << cli << std::endl;
-    }
+}
+
+TEST_CASE( "usage", "[.]" ) {
+
+    TestOpt config;
+    auto cli = config.makeCli();
+    std::cout << cli << std::endl;
 }
 
 TEST_CASE( "Invalid parsers" )
