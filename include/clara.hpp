@@ -715,6 +715,14 @@ namespace detail {
         std::vector<Opt> m_options;
         std::vector<Arg> m_args;
 
+        Parser() = default;
+        Parser( Parser const& ) = default;
+        Parser( Parser&& ) = default;
+
+        template<typename T>
+        Parser( T const& parser ) {
+            operator+=( parser );
+        }
         auto operator+=(ExeName const &exeName) -> Parser & {
             m_exeName = exeName;
             return *this;
