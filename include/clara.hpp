@@ -809,52 +809,53 @@ namespace detail {
         using ParserBase::parse;
 
         auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
-            std::vector<ParserBase const *> allParsers;
-            allParsers.reserve( m_args.size() + m_options.size() );
-            std::set<ParserBase const *> requiredParsers;
 
-            for( auto const &opt : m_options ) {
-                allParsers.push_back( &opt );
-                if( !opt.isOptional() )
-                    requiredParsers.insert( &opt );
-            }
-
-            size_t optionalArgs = 0;
-            for( auto const &arg : m_args ) {
-                allParsers.push_back( &arg );
-                if( !arg.isOptional() ) {
-                    if( optionalArgs > 0 )
-                        return InternalParseResult::logicError( "Required arguments must preceed any optional arguments" );
-                    else
-                        ++optionalArgs;
-                    requiredParsers.insert( &arg );
-                }
-            }
+            // Keep track of how many instances of each opt/ arg are matched
+            size_t optCounts[m_options.size()], argCounts[m_args.size()];
+            for( auto& c : optCounts ) c = 0;
+            for( auto& c : argCounts ) c = 0;
 
             m_exeName.set( exeName );
 
             auto result = InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
-                for( auto parser : allParsers ) {
-                    result = parser->parse( exeName, result.value().remainingTokens() );
-                    if( !result )
-                        return result;
-                    if( result.value().type() != ParseResultType::NoMatch ) {
-                        if( parser->cardinality() == 1 )
-                            allParsers.erase( std::remove(allParsers.begin(), allParsers.end(), parser ),
-                                              allParsers.end() );
-                        requiredParsers.erase( parser );
-                        tokenParsed = true;
-                        break;
+
+                if( result.value().remainingTokens()->type == TokenType::Option ) {
+                    for( size_t i = 0; i <  m_options.size(); ++i ) {
+                        auto& optParser = m_options[i];
+                        result = optParser.parse( exeName, result.value().remainingTokens() );
+                        if( !result )
+                            return result;
+                        if( result.value().type() != ParseResultType::NoMatch ) {
+                            tokenParsed = true;
+                            ++optCounts[i];
+                            break;
+                        }
                     }
                 }
+                else {
+                    for( size_t i = 0; i <  m_args.size(); ++i ) {
+                        auto& argParser = m_args[i];
+                        if( argParser.cardinality() == 0 || argCounts[i] < argParser.cardinality() ) {
+                            result = argParser.parse( exeName, result.value().remainingTokens() );
+                            if( !result )
+                                return result;
+                            if( result.value().type() != ParseResultType::NoMatch ) {
+                                tokenParsed = true;
+                                ++argCounts[i];
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 if( result.value().type() == ParseResultType::ShortCircuitAll )
                     return result;
                 if( !tokenParsed )
                     return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
-            // !TBD Check missing required options
+            // !TBD Check missing required options, unrecognised, and too-many args
             return result;
         }
     };
