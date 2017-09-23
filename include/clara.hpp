@@ -214,8 +214,9 @@ namespace detail {
     public:
         template<typename U>
         explicit BasicResult( BasicResult<U> const &other )
-                :   ResultValueBase<T>( other.type() ),
-                    m_errorMessage( other.errorMessage() ) {
+        :   ResultValueBase<T>( other.type() ),
+            m_errorMessage( other.errorMessage() )
+        {
             assert( type() != ResultBase::Ok );
         }
 
@@ -223,9 +224,7 @@ namespace detail {
         static auto ok( U const &value ) -> BasicResult { return { ResultBase::Ok, value }; }
         static auto ok() -> BasicResult { return { ResultBase::Ok }; }
         static auto logicError( std::string const &message ) -> BasicResult { return { ResultBase::LogicError, message }; }
-        static auto runtimeError( std::string const &message ) -> BasicResult {
-            return { ResultBase::RuntimeError, message };
-        }
+        static auto runtimeError( std::string const &message ) -> BasicResult { return { ResultBase::RuntimeError, message }; }
 
         explicit operator bool() const { return m_type == ResultBase::Ok; }
         auto type() const -> ResultBase::Type { return m_type; }
@@ -247,8 +246,9 @@ namespace detail {
         std::string m_errorMessage; // Only populated if resultType is an error
 
         BasicResult( ResultBase::Type type, std::string const &message )
-        : ResultValueBase<T>(type),
-          m_errorMessage(message) {
+        :   ResultValueBase<T>(type),
+            m_errorMessage(message)
+        {
             assert( m_type != ResultBase::Ok );
         }
 
@@ -265,7 +265,8 @@ namespace detail {
 
         ParseState( ParseResultType type, TokenStream const &remainingTokens )
         : m_type(type),
-          m_remainingTokens( remainingTokens ) {}
+          m_remainingTokens( remainingTokens )
+        {}
 
         auto type() const -> ParseResultType { return m_type; }
         auto remainingTokens() const -> TokenStream { return m_remainingTokens; }
@@ -844,7 +845,7 @@ namespace detail {
                 if( !tokenParsed )
                     return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
-            // !TBD Check missing required options, unrecognised, and too-many args
+            // !TBD Check missing required options
             return result;
         }
     };
