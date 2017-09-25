@@ -8,6 +8,9 @@
 #define CLARA_CONFIG_CONSOLE_WIDTH 80
 #endif
 
+#ifndef CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
+#define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH CLARA_CONFIG_CONSOLE_WIDTH
+#endif
 #include "clara_textflow.hpp"
 
 #include <vector>
