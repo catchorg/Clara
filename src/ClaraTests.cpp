@@ -315,7 +315,7 @@ TEST_CASE( "Unrecognised opts" ) {
     using namespace Catch::Matchers;
 
     bool a = false;
-    Parser cli = Opt( a )["-a"];
+    Parser cli = Parser() | Opt( a )["-a"];
 
     auto result = cli.parse( { "TestApp", "-b" } );
     CHECK( !result );
