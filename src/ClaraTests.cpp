@@ -85,20 +85,20 @@ TEST_CASE( "Combined parser" ) {
     bool showHelp = false;
     auto parser
             = Help( showHelp )
-            + Opt( config.m_rngSeed, "time|value" )
+            | Opt( config.m_rngSeed, "time|value" )
                 ["--rng-seed"]["-r"]
                 ("set a specific seed for random numbers" )
                 .required()
-            + Opt( config.m_name, "name" )
+            | Opt( config.m_name, "name" )
                 ["-n"]["--name"]
                 ( "the name to use" )
-            + Opt( config.m_flag )
+            | Opt( config.m_flag )
                 ["-f"]["--flag"]
                 ( "a flag to set" )
-            + Opt( [&]( double value ){ config.m_value = value; }, "number" )
+            | Opt( [&]( double value ){ config.m_value = value; }, "number" )
                 ["-d"]["--double"]
                 ( "just some number" )
-            + Arg( config.m_tests, "test name|tags|pattern" )
+            | Arg( config.m_tests, "test name|tags|pattern" )
                 ( "which test or tests to use" );
 
     SECTION( "usage" ) {
@@ -148,12 +148,12 @@ struct TestOpt {
 
     auto makeCli() -> Parser {
         return ExeName( processName )
-          + Opt( fileName, "filename" )
+          | Opt( fileName, "filename" )
               ["-o"]["--output"]
               ( "specifies output file" )
-          + Opt( number, "an integral value" )
+          | Opt( number, "an integral value" )
               ["-n"]
-          + Opt( [&]( int i ) {
+          | Opt( [&]( int i ) {
                     if (i < 0 || i > 10)
                         return ParserResult::runtimeError("index must be between 0 and 10");
                     else {
@@ -163,12 +163,12 @@ struct TestOpt {
                 }, "index" )
               ["-i"]
               ( "An index, which is an integer between 0 and 10, inclusive" )
-          + Opt( flag )
+          | Opt( flag )
               ["-f"]
               ( "A flag" )
-          + Arg( firstPos, "first arg" )
+          | Arg( firstPos, "first arg" )
               ( "First position" )
-          + Arg( secondPos, "second arg" )
+          | Arg( secondPos, "second arg" )
               ( "Second position" );
     }
 };
@@ -293,7 +293,7 @@ TEST_CASE( "Invalid parsers" )
 
 TEST_CASE( "Multiple flags" ) {
     bool a = false, b = false, c = false;
-    auto cli = Opt( a )["-a"] + Opt( b )["-b"] + Opt( c )["-c"];
+    auto cli = Opt( a )["-a"] | Opt( b )["-b"] | Opt( c )["-c"];
 
     SECTION( "separately" ) {
         auto result = cli.parse({ "TestApp", "-a", "-b", "-c" });
