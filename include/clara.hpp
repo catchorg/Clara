@@ -1,4 +1,4 @@
-// v1.0
+// v1.0-develop.2
 // See https://github.com/philsquared/Clara
 
 #ifndef CLARA_HPP_INCLUDED
