@@ -811,7 +811,7 @@ namespace detail {
                 size_t count = 0;
             };
             const size_t totalParsers = m_options.size() + m_args.size();
-            ParserInfo parseInfos[totalParsers];
+            std::vector<ParserInfo> parseInfos(totalParsers);
             size_t i = 0;
             for( auto const& opt : m_options ) parseInfos[i++].parser = &opt;
             for( auto const& arg : m_args ) parseInfos[i++].parser = &arg;
