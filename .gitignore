@@ -7,3 +7,7 @@
 .idea/dictionaries/*
 cmake-build-*
 .vs
+*.pyc
+.idea/markdown-navigator.xml
+.idea/codeStyles/Project.xml
+.idea/markdown-navigator/profiles_settings.xml

@@ -6,6 +6,22 @@
 
 using namespace clara;
 
+template<>
+struct Catch::StringMaker<clara::detail::InternalParseResult> {
+    static std::string convert( clara::detail::InternalParseResult const& result ) {
+        switch( result.type() ) {
+            case clara::detail::ResultBase::Ok:
+                return "Ok";
+            case clara::detail::ResultBase::LogicError:
+                return "LogicError '" + result.errorMessage() + "'";
+            case clara::detail::ResultBase::RuntimeError:
+                return "RuntimeError: '" + result.errorMessage() + "'";
+            default:
+                return "Unknow type: " + std::to_string( static_cast<int>( result.type() ) );
+        }
+    }
+};
+
 // !TBD
 // for Catch:
 // error on unrecognised?
@@ -69,20 +85,20 @@ TEST_CASE( "Combined parser" ) {
     bool showHelp = false;
     auto parser
             = Help( showHelp )
-            + Opt( config.m_rngSeed, "time|value" )
+            | Opt( config.m_rngSeed, "time|value" )
                 ["--rng-seed"]["-r"]
                 ("set a specific seed for random numbers" )
                 .required()
-            + Opt( config.m_name, "name" )
+            | Opt( config.m_name, "name" )
                 ["-n"]["--name"]
                 ( "the name to use" )
-            + Opt( config.m_flag )
+            | Opt( config.m_flag )
                 ["-f"]["--flag"]
                 ( "a flag to set" )
-            + Opt( [&]( double value ){ config.m_value = value; }, "number" )
+            | Opt( [&]( double value ){ config.m_value = value; }, "number" )
                 ["-d"]["--double"]
                 ( "just some number" )
-            + Arg( config.m_tests, "test name|tags|pattern" )
+            | Arg( config.m_tests, "test name|tags|pattern" )
                 ( "which test or tests to use" );
 
     SECTION( "usage" ) {
@@ -129,6 +145,32 @@ struct TestOpt {
     std::string firstPos;
     std::string secondPos;
     std::vector<std::string> unpositional;
+
+    auto makeCli() -> Parser {
+        return ExeName( processName )
+          | Opt( fileName, "filename" )
+              ["-o"]["--output"]
+              ( "specifies output file" )
+          | Opt( number, "an integral value" )
+              ["-n"]
+          | Opt( [&]( int i ) {
+                    if (i < 0 || i > 10)
+                        return ParserResult::runtimeError("index must be between 0 and 10");
+                    else {
+                        index = i;
+                        return ParserResult::ok( ParseResultType::Matched );
+                    }
+                }, "index" )
+              ["-i"]
+              ( "An index, which is an integer between 0 and 10, inclusive" )
+          | Opt( flag )
+              ["-f"]
+              ( "A flag" )
+          | Arg( firstPos, "first arg" )
+              ( "First position" )
+          | Arg( secondPos, "second arg" )
+              ( "Second position" );
+    }
 };
 
 struct TestOpt2 {
@@ -137,35 +179,8 @@ struct TestOpt2 {
 
 TEST_CASE( "cmdline" ) {
 
-    using namespace clara;
-
     TestOpt config;
-
-
-    auto cli
-            = ExeName( config.processName )
-            + Opt( config.fileName, "filename" )
-                 ["-o"]["--output"]
-                 ( "specifies output file" )
-            + Opt( config.number, "an integral value" )
-                ["-n"]
-            + Opt( [&]( int i ) {
-                        if (i < 0 || i > 10)
-                            return ParserResult::runtimeError("index must be between 0 and 10");
-                        else {
-                            config.index = i;
-                            return ParserResult::ok( ParseResultType::Matched );
-                        }
-                    }, "index" )
-                ["-i"]
-                ( "An index, which is an integer between 0 and 10, inclusive" )
-            + Opt( config.flag )
-                ["-f"]
-                ( "A flag" )
-            + Arg( config.firstPos, "first arg" )
-                ( "First position" )
-            + Arg( config.secondPos, "second arg" )
-                ( "Second position" );
+    auto cli = config.makeCli();
 
     SECTION( "exe name" ) {
         auto result = cli.parse( { "TestApp", "-o", "filename.ext" } );
@@ -239,7 +254,7 @@ TEST_CASE( "cmdline" ) {
 
 #ifdef CLARA_PLATFORM_WINDOWS
     SECTION( "forward slash" ) {
-        auto result = cli.parse( { "/f" } );
+        auto result = cli.parse( { "TestApp", "/f" } );
         CHECK(result);
 
         REQUIRE( config.flag );
@@ -287,7 +302,7 @@ TEST_CASE( "Invalid parsers" )
 
 TEST_CASE( "Multiple flags" ) {
     bool a = false, b = false, c = false;
-    auto cli = Opt( a )["-a"] + Opt( b )["-b"] + Opt( c )["-c"];
+    auto cli = Opt( a )["-a"] | Opt( b )["-b"] | Opt( c )["-c"];
 
     SECTION( "separately" ) {
         auto result = cli.parse({ "TestApp", "-a", "-b", "-c" });
@@ -303,4 +318,15 @@ TEST_CASE( "Multiple flags" ) {
         CHECK(b);
         CHECK(c);
     }
+}
+
+TEST_CASE( "Unrecognised opts" ) {
+    using namespace Catch::Matchers;
+
+    bool a = false;
+    Parser cli = Parser() | Opt( a )["-a"];
+
+    auto result = cli.parse( { "TestApp", "-b" } );
+    CHECK( !result );
+    CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
