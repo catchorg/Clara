@@ -102,7 +102,7 @@ namespace detail {
                     } else {
                         if( next[1] != '-' && next.size() > 2 ) {
                             std::string opt = "- ";
-                            for( size_t i = 1; i < next.size(); ++i ) {
+                            for( std::size_t i = 1; i < next.size(); ++i ) {
                                 opt[1] = next[i];
                                 m_tokenBuffer.push_back( { TokenType::Option, opt } );
                             }
@@ -127,7 +127,7 @@ namespace detail {
             return !m_tokenBuffer.empty() || it != itEnd;
         }
 
-        auto count() const -> size_t { return m_tokenBuffer.size() + (itEnd - it); }
+        auto count() const -> std::size_t { return m_tokenBuffer.size() + (itEnd - it); }
 
         auto operator*() const -> Token {
             assert( !m_tokenBuffer.empty() );
@@ -531,7 +531,7 @@ namespace detail {
             return m_optionality == Optionality::Optional;
         }
 
-        virtual auto cardinality() const -> size_t {
+        virtual auto cardinality() const -> std::size_t {
             if( m_ref->isContainer() )
                 return 0;
             else
@@ -800,8 +800,8 @@ namespace detail {
             }
 
             auto rows = getHelpColumns();
-            size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
-            size_t optWidth = 0;
+            std::size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
+            std::size_t optWidth = 0;
             for( auto const &cols : rows )
                 optWidth = (std::max)(optWidth, cols.left.size() + 2);
 
@@ -850,9 +850,9 @@ namespace detail {
         using ParserBase::parse;
 
         auto internalParse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
-            const size_t totalParsers = m_options.size() + m_args.size();
+            const std::size_t totalParsers = m_options.size() + m_args.size();
             std::vector<ParserBase const*> parsers(totalParsers);
-            size_t i = 0;
+            std::size_t i = 0;
             for( auto const& opt : m_options ) parsers[i++] = &opt;
             for( auto const& arg : m_args ) parsers[i++] = &arg;
 
