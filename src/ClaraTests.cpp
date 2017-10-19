@@ -118,7 +118,7 @@ TEST_CASE( "Combined parser" ) {
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-r", "42", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
@@ -126,6 +126,13 @@ TEST_CASE( "Combined parser" ) {
         REQUIRE( config.m_value == 123.45 );
         REQUIRE( config.m_tests == std::vector<std::string> { "test1", "test2" } );
         CHECK( showHelp == false );
+    }
+    SECTION( "missing required" ) {
+        using namespace Catch::Matchers;
+
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), Contains( "Missing token" ) && Contains( "time|value" ) );
     }
     SECTION( "help" ) {
         auto result = parser.parse( Args{ "TestApp", "-?", "-n:NotSet" } );
