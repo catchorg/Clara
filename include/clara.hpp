@@ -102,7 +102,7 @@ namespace detail {
                     } else {
                         if( next[1] != '-' && next.size() > 2 ) {
                             std::string opt = "- ";
-                            for( size_t i = 1; i < next.size(); ++i ) {
+                            for( std::size_t i = 1; i < next.size(); ++i ) {
                                 opt[1] = next[i];
                                 m_tokenBuffer.push_back( { TokenType::Option, opt } );
                             }
@@ -127,7 +127,7 @@ namespace detail {
             return !m_tokenBuffer.empty() || it != itEnd;
         }
 
-        auto count() const -> size_t { return m_tokenBuffer.size() + (itEnd - it); }
+        auto count() const -> std::size_t { return m_tokenBuffer.size() + (itEnd - it); }
 
         auto operator*() const -> Token {
             assert( !m_tokenBuffer.empty() );
@@ -452,7 +452,7 @@ namespace detail {
         virtual ~ParserBase() = default;
         virtual auto validate() const -> Result { return Result::ok(); }
         virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
-        virtual auto cardinality() const -> size_t { return 1; }
+        virtual auto cardinality() const -> std::size_t { return 1; }
 
         auto parse( Args const &args ) const -> InternalParseResult {
             return parse( args.exeName(), TokenStream( args ) );
@@ -509,7 +509,7 @@ namespace detail {
             return m_optionality == Optionality::Optional;
         }
 
-        auto cardinality() const -> size_t override {
+        auto cardinality() const -> std::size_t override {
             if( m_ref->isContainer() )
                 return 0;
             else
@@ -769,8 +769,8 @@ namespace detail {
             }
 
             auto rows = getHelpColumns();
-            size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
-            size_t optWidth = 0;
+            std::size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
+            std::size_t optWidth = 0;
             for( auto const &cols : rows )
                 optWidth = (std::max)(optWidth, cols.left.size() + 2);
 
@@ -808,11 +808,11 @@ namespace detail {
 
             struct ParserInfo {
                 ParserBase const* parser = nullptr;
-                size_t count = 0;
+                std::size_t count = 0;
             };
-            const size_t totalParsers = m_options.size() + m_args.size();
-            ParserInfo parseInfos[totalParsers];
-            size_t i = 0;
+            const std::size_t totalParsers = m_options.size() + m_args.size();
+            std::vector<ParserInfo> parseInfos(totalParsers);
+            std::size_t i = 0;
             for( auto const& opt : m_options ) parseInfos[i++].parser = &opt;
             for( auto const& arg : m_args ) parseInfos[i++].parser = &arg;
 
