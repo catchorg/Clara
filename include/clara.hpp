@@ -450,9 +450,25 @@ namespace detail {
     class ParserBase {
     public:
         virtual ~ParserBase() = default;
-        virtual auto validate() const -> Result { return Result::ok(); }
-        virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
-        virtual auto cardinality() const -> size_t { return 1; }
+        virtual auto validateSettings() const -> Result { return Result::ok(); }
+        virtual auto validateFinal() const -> Result { return Result::ok(); }
+        virtual auto canParse() const -> bool { return false; }
+        virtual auto internalParse( std::string const& exeName, TokenStream const &tokens ) const->InternalParseResult = 0;
+
+        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult {
+            auto validationResult = validateSettings();
+            if( !validationResult )
+                return InternalParseResult( validationResult );
+
+            auto result = internalParse( exeName, tokens );
+
+            // Call this even if parsing failed in order to perform cleanup
+            validationResult = validateFinal();
+            if( result && result.value().type() != ParseResultType::ShortCircuitAll && !validationResult )
+                return InternalParseResult( validationResult );
+
+            return result;
+        }
 
         auto parse( Args const &args ) const -> InternalParseResult {
             return parse( args.exeName(), TokenStream( args ) );
@@ -474,20 +490,26 @@ namespace detail {
         std::shared_ptr<BoundRefBase> m_ref;
         std::string m_hint;
         std::string m_description;
+        mutable std::size_t m_count;
 
-        explicit ParserRefImpl( std::shared_ptr<BoundRefBase> const &ref ) : m_ref( ref ) {}
+        explicit ParserRefImpl( std::shared_ptr<BoundRefBase> const &ref )
+        :   m_ref( ref ),
+            m_count( 0 )
+        {}
 
     public:
         template<typename T>
         ParserRefImpl( T &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundRef<T>>( ref ) ),
-            m_hint( hint )
+            m_hint( hint ),
+            m_count( 0 )
         {}
 
         template<typename LambdaT>
         ParserRefImpl( LambdaT const &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundLambda<LambdaT>>( ref ) ),
-            m_hint(hint)
+            m_hint( hint ),
+            m_count( 0 )
         {}
 
         auto operator()( std::string const &description ) -> DerivedT & {
@@ -509,14 +531,27 @@ namespace detail {
             return m_optionality == Optionality::Optional;
         }
 
-        auto cardinality() const -> size_t override {
+        virtual auto cardinality() const -> size_t {
             if( m_ref->isContainer() )
                 return 0;
             else
                 return 1;
         }
+        
+        auto validateFinal() const -> Result override {
+            if( !isOptional() && count() < 1 )
+                return Result::runtimeError( "Missing token: " + hint() );
+            m_count = 0;
+            return ComposableParserImpl::validateFinal();
+        }
+
+        auto canParse() const -> bool override {
+            return (cardinality() == 0 || count() < cardinality());
+        }
 
         auto hint() const -> std::string { return m_hint; }
+
+        auto count() const -> std::size_t { return m_count; }
     };
 
     class ExeName : public ComposableParserImpl<ExeName> {
@@ -541,7 +576,7 @@ namespace detail {
         }
 
         // The exe name is not parsed out of the normal tokens, but is handled specially
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto internalParse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
         }
 
@@ -565,11 +600,7 @@ namespace detail {
     public:
         using ParserRefImpl::ParserRefImpl;
 
-        auto parse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto validationResult = validate();
-            if( !validationResult )
-                return InternalParseResult( validationResult );
-
+        auto internalParse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto remainingTokens = tokens;
             auto const &token = *remainingTokens;
             if( token.type != TokenType::Argument )
@@ -578,8 +609,10 @@ namespace detail {
             auto result = m_ref->setValue( remainingTokens->token );
             if( !result )
                 return InternalParseResult( result );
-            else
+            else {
+                ++m_count;
                 return InternalParseResult::ok( ParseState( ParseResultType::Matched, ++remainingTokens ) );
+            }
         }
     };
 
@@ -641,22 +674,19 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto validationResult = validate();
-            if( !validationResult )
-                return InternalParseResult( validationResult );
-
+        auto internalParse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto remainingTokens = tokens;
             if( remainingTokens && remainingTokens->type == TokenType::Option ) {
                 auto const &token = *remainingTokens;
-                if( isMatch(token.token ) ) {
+                if( isMatch( token.token ) ) {
                     if( m_ref->isFlag() ) {
                         auto result = m_ref->setFlag( true );
                         if( !result )
                             return InternalParseResult( result );
                         if( result.value() == ParseResultType::ShortCircuitAll )
                             return InternalParseResult::ok( ParseState( result.value(), remainingTokens ) );
-                    } else {
+                    }
+                    else {
                         ++remainingTokens;
                         if( !remainingTokens )
                             return InternalParseResult::runtimeError( "Expected argument following " + token.token );
@@ -669,13 +699,14 @@ namespace detail {
                         if( result.value() == ParseResultType::ShortCircuitAll )
                             return InternalParseResult::ok( ParseState( result.value(), remainingTokens ) );
                     }
+                    ++m_count;
                     return InternalParseResult::ok( ParseState( ParseResultType::Matched, ++remainingTokens ) );
                 }
             }
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, remainingTokens ) );
         }
 
-        auto validate() const -> Result override {
+        auto validateSettings() const -> Result override {
             if( m_optNames.empty() )
                 return Result::logicError( "No options supplied to Opt" );
             for( auto const &name : m_optNames ) {
@@ -684,7 +715,7 @@ namespace detail {
                 if( name[0] != '-' && name[0] != '/' )
                     return Result::logicError( "Option name must begin with '-' or '/'" );
             }
-            return ParserRefImpl::validate();
+            return ParserRefImpl::validateSettings();
         }
     };
 
@@ -788,14 +819,28 @@ namespace detail {
             return os;
         }
 
-        auto validate() const -> Result override {
+        auto validateSettings() const -> Result override {
             for( auto const &opt : m_options ) {
-                auto result = opt.validate();
+                auto result = opt.validateSettings();
                 if( !result )
                     return result;
             }
             for( auto const &arg : m_args ) {
-                auto result = arg.validate();
+                auto result = arg.validateSettings();
+                if( !result )
+                    return result;
+            }
+            return Result::ok();
+        }
+
+        auto validateFinal() const -> Result override {
+            for( auto const &opt : m_options ) {
+                auto result = opt.validateFinal();
+                if( !result )
+                    return result;
+            }
+            for( auto const &arg : m_args ) {
+                auto result = arg.validateFinal();
                 if( !result )
                     return result;
             }
@@ -804,17 +849,12 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
-
-            struct ParserInfo {
-                ParserBase const* parser = nullptr;
-                size_t count = 0;
-            };
+        auto internalParse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
             const size_t totalParsers = m_options.size() + m_args.size();
-            ParserInfo parseInfos[totalParsers];
+            ParserBase const* parsers[totalParsers];
             size_t i = 0;
-            for( auto const& opt : m_options ) parseInfos[i++].parser = &opt;
-            for( auto const& arg : m_args ) parseInfos[i++].parser = &arg;
+            for( auto const& opt : m_options ) parsers[i++] = &opt;
+            for( auto const& arg : m_args ) parsers[i++] = &arg;
 
             m_exeName.set( exeName );
 
@@ -822,14 +862,13 @@ namespace detail {
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
-                for( auto& parseInfo : parseInfos ) {
-                    if( parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality() ) {
-                        result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
+                for( auto& parser : parsers ) {
+                    if( parser->canParse() ) {
+                        result = parser->internalParse(exeName, result.value().remainingTokens());
                         if (!result)
                             return result;
                         if (result.value().type() != ParseResultType::NoMatch) {
                             tokenParsed = true;
-                            ++parseInfo.count;
                             break;
                         }
                     }
@@ -840,7 +879,6 @@ namespace detail {
                 if( !tokenParsed )
                     return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
-            // !TBD Check missing required options
             return result;
         }
     };
