@@ -18,6 +18,7 @@
 #include <sstream>
 #include <cassert>
 #include <set>
+#include <utility>
 #include <algorithm>
 
 #if !defined(CLARA_PLATFORM_WINDOWS) && ( defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) )
@@ -52,9 +53,12 @@ namespace detail {
         std::vector<std::string> m_args;
 
     public:
-        Args( int argc, char *argv[] ) {
-            m_exeName = argv[0];
-            for( int i = 1; i < argc; ++i )
+        // exeName is especially useful for Win32 programs which get passed the whole commandline
+        // (argv returned from `CommandLineToArgvW` doesn't contain the executable path)
+        Args( int argc, char *argv[], std::string exeName = std::string{} ) {
+            bool exeOffArgv = exeName.empty();
+            m_exeName = exeOffArgv ? argv[0] : move(exeName);
+            for( int i = exeOffArgv ? 1 : 0; i < argc; ++i )
                 m_args.push_back( argv[i] );
         }
 
@@ -63,7 +67,7 @@ namespace detail {
             m_args( args.begin()+1, args.end() )
         {}
 
-        auto exeName() const -> std::string {
+        auto exeName() const -> std::string const& {
             return m_exeName;
         }
     };
@@ -239,7 +243,7 @@ namespace detail {
 
         explicit operator bool() const { return m_type == ResultBase::Ok; }
         auto type() const -> ResultBase::Type { return m_type; }
-        auto errorMessage() const -> std::string { return m_errorMessage; }
+        auto errorMessage() const -> std::string const& { return m_errorMessage; }
 
     protected:
         virtual void enforceOk() const {
@@ -456,7 +460,11 @@ namespace detail {
     struct Parser;
 
     class ParserBase {
+    protected:
+        bool m_hidden;
+
     public:
+        ParserBase() : m_hidden( false ) {}
         virtual ~ParserBase() = default;
         virtual auto validateSettings() const -> Result { return Result::ok(); }
         virtual auto validateFinal() const -> Result { return Result::ok(); }
@@ -535,6 +543,11 @@ namespace detail {
             return static_cast<DerivedT &>( *this );
         };
 
+        auto hidden() -> DerivedT & {
+            m_hidden = true;
+            return static_cast<DerivedT &>(*this);
+        };
+
         auto isOptional() const -> bool {
             return m_optionality == Optionality::Optional;
         }
@@ -557,7 +570,7 @@ namespace detail {
             return (cardinality() == 0 || count() < cardinality());
         }
 
-        auto hint() const -> std::string { return m_hint; }
+        auto hint() const -> std::string const& { return m_hint; }
 
         auto count() const -> std::size_t { return m_count; }
     };
@@ -588,12 +601,12 @@ namespace detail {
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
         }
 
-        auto name() const -> std::string { return *m_name; }
-        auto set( std::string const& newName ) -> ParserResult {
+        auto name() const -> std::string const& { return *m_name; }
+        auto set( std::string newName ) -> ParserResult {
 
             auto lastSlash = newName.find_last_of( "\\/" );
             auto filename = ( lastSlash == std::string::npos )
-                    ? newName
+                    ? move( newName )
                     : newName.substr( lastSlash+1 );
 
             *m_name = filename;
@@ -607,6 +620,16 @@ namespace detail {
     class Arg : public ParserRefImpl<Arg> {
     public:
         using ParserRefImpl::ParserRefImpl;
+
+        auto getHelpColumns() const -> std::vector<HelpColumns> {
+            if( m_description.empty() || m_hidden )
+                return {};
+            else {
+                std::ostringstream oss;
+                oss << " <" << m_hint << ">";
+                return { { oss.str(), m_description} };
+            }
+        }
 
         auto internalParse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto remainingTokens = tokens;
@@ -655,6 +678,9 @@ namespace detail {
         }
 
         auto getHelpColumns() const -> std::vector<HelpColumns> {
+            if( m_hidden )
+                return {};
+
             std::ostringstream oss;
             bool first = true;
             for( auto const &opt : m_optNames ) {
@@ -777,10 +803,12 @@ namespace detail {
             return Parser( *this ) |= other;
         }
 
-        auto getHelpColumns() const -> std::vector<HelpColumns> {
+        template<typename Parsers>
+        auto getHelpColumns( Parsers const &p ) const -> std::vector<HelpColumns> {
             std::vector<HelpColumns> cols;
-            for (auto const &o : m_options) {
+            for (auto const &o : p) {
                 auto childCols = o.getHelpColumns();
+                cols.reserve( cols.size() + childCols.size() );
                 cols.insert( cols.end(), childCols.begin(), childCols.end() );
             }
             return cols;
@@ -807,22 +835,30 @@ namespace detail {
                     os << "]";
                 if( !m_options.empty() )
                     os << " options";
-                os << "\n\nwhere options are:" << std::endl;
+                os << "\n";
             }
 
-            auto rows = getHelpColumns();
-            std::size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
-            std::size_t optWidth = 0;
-            for( auto const &cols : rows )
-                optWidth = (std::max)(optWidth, cols.left.size() + 2);
+            auto streamHelpColumns = [&os]( std::vector<HelpColumns> const &rows, const std::string &header ) {
+                if( !rows.empty() ) {
+                    os << header << std::endl;
 
-            for( auto const &cols : rows ) {
-                auto row =
-                        TextFlow::Column( cols.left ).width( optWidth ).indent( 2 ) +
-                        TextFlow::Spacer(4) +
-                        TextFlow::Column( cols.right ).width( consoleWidth - 7 - optWidth );
-                os << row << std::endl;
-            }
+                    std::size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
+                    std::size_t width = 0;
+                    for( auto const &cols : rows )
+                        width = (std::max)(width, cols.left.size() + 2);
+
+                    for( auto const &cols : rows ) {
+                        auto row =
+                            TextFlow::Column( cols.left ).width( width ).indent( 2 ) +
+                            TextFlow::Spacer(4) +
+                            TextFlow::Column( cols.right ).width( consoleWidth - 7 - width );
+                        os << row << std::endl;
+                    }
+                }
+            };
+
+            streamHelpColumns( getHelpColumns( m_args ), "\nwhere arguments are:" );
+            streamHelpColumns( getHelpColumns( m_options ), "\nwhere options are:" );
         }
 
         friend auto operator<<( std::ostream &os, Parser const &parser ) -> std::ostream& {
