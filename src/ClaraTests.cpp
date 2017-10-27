@@ -1,4 +1,4 @@
-#include "clara.hpp"
+#include <clara.hpp>
 
 #include "catch.hpp"
 
@@ -336,4 +336,102 @@ TEST_CASE( "Unrecognised opts" ) {
     auto result = cli.parse( { "TestApp", "-b" } );
     CHECK( !result );
     CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
+}
+
+TEST_CASE( "Subcommands" ) {
+    using namespace Catch::Matchers;
+
+    std::string subcommand, subArg;
+    bool showHelp = false, subOpt = false;
+
+    auto cli = (
+          // create a full parser
+          Parser{} | Help{ showHelp }
+        , Cmd{ subcommand, "subcommand" }( "Execute subcommand" )
+          | Arg{ subArg, "arg1" }( "Arg1" ).required()
+          | Opt{ subOpt }["--opt"]( "Opt" )
+        , Cmd{ subcommand, "internal" }( "Execute another subcommand" ).hidden()
+    );
+    
+    REQUIRE( subcommand == "" );
+
+    SECTION( "subcommand.1" ) {
+        auto result = cli.parse( { "TestApp", "subcommand", "a1" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "subcommand" ) );
+        CHECK_THAT( subArg, Equals( "a1" ) );
+        CHECK( !subOpt);
+    }
+    SECTION( "subcommand.2" ) {
+        auto result = cli.parse( { "TestApp", "subcommand", "a1", "--opt" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "subcommand" ) );
+        CHECK_THAT( subArg, Equals( "a1" ) );
+        CHECK( subOpt );
+    }
+    SECTION( "hidden subcommand" ) {
+        auto result = cli.parse( { "TestApp", "internal" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "internal" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt );
+    }
+    SECTION( "unmatched subcommand" ) {
+        auto result = cli.parse( { "TestApp", "xyz" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token" ) && Contains( "xyz" ) );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt );
+    }
+    SECTION( "app version" ) {
+        auto result = cli.parse( { "TestApp", "-h" } );
+        CHECK( result );
+        CHECK( showHelp );
+        CHECK_THAT( subcommand, Equals( "" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt);
+    }
+    SECTION( "app usage" ) {
+        std::ostringstream oss;
+        oss << cli;
+        auto usage = oss.str();
+        REQUIRE(usage ==
+            R"(usage:
+  <executable>  options | subcommand
+
+where options are:
+  -?, -h, --help    display usage information
+
+where subcommands are:
+  subcommand    Execute subcommand
+)"
+        );
+    }
+    SECTION( "subcommand usage" ) {
+        std::cout << *cli.findCmd( "subcommand" );
+        std::ostringstream oss;
+        oss << *cli.findCmd( "subcommand" );
+        auto usage = oss.str();
+        REQUIRE(usage ==
+            R"(Execute subcommand
+
+usage:
+  subcommand <arg1> options
+
+where arguments are:
+   <arg1>    Arg1
+
+where options are:
+  --opt    Opt
+)"
+);
+    }
 }

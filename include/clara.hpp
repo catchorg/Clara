@@ -577,6 +577,7 @@ namespace detail {
 
     class ExeName : public ComposableParserImpl<ExeName> {
         std::shared_ptr<std::string> m_name;
+        std::shared_ptr<std::string> m_description;
         std::shared_ptr<BoundRefBase> m_ref;
 
         template<typename LambdaT>
@@ -585,7 +586,10 @@ namespace detail {
         }
 
     public:
-        ExeName() : m_name( std::make_shared<std::string>( "<executable>" ) ) {}
+        ExeName()
+          : m_name( std::make_shared<std::string>( "<executable>" ) ),
+            m_description( std::make_shared<std::string>() )
+        {}
 
         explicit ExeName( std::string &ref ) : ExeName() {
             m_ref = std::make_shared<BoundRef<std::string>>( ref );
@@ -602,7 +606,9 @@ namespace detail {
         }
 
         auto name() const -> std::string const& { return *m_name; }
-        auto set( std::string newName ) -> ParserResult {
+        auto description( std::string d ) -> void { *m_description = move(d); }
+        auto description() const -> std::string const& { return *m_description; }
+        auto set( std::string newName, bool updateRef = true ) -> ParserResult {
 
             auto lastSlash = newName.find_last_of( "\\/" );
             auto filename = ( lastSlash == std::string::npos )
@@ -610,7 +616,7 @@ namespace detail {
                     : newName.substr( lastSlash+1 );
 
             *m_name = filename;
-            if( m_ref )
+            if( m_ref && updateRef )
                 return m_ref->setValue( filename );
             else
                 return ParserResult::ok( ParseResultType::Matched );
@@ -774,6 +780,8 @@ namespace detail {
     struct Parser : ParserBase {
 
         mutable ExeName m_exeName;
+        bool m_isSubcmd = false;
+        std::vector<Parser> m_cmds;
         std::vector<Opt> m_options;
         std::vector<Arg> m_args;
 
@@ -795,6 +803,7 @@ namespace detail {
         auto operator|=( Parser const &other ) -> Parser & {
             m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
             m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
+            m_cmds.insert(m_cmds.end(), other.m_cmds.begin(), other.m_cmds.end());
             return *this;
         }
 
@@ -815,6 +824,10 @@ namespace detail {
         }
 
         void writeToStream( std::ostream &os ) const {
+            // print banner
+            if( !m_exeName.description().empty() ) {
+                os << m_exeName.description() << std::endl << std::endl;
+            }
             if (!m_exeName.name().empty()) {
                 os << "usage:\n" << "  " << m_exeName.name() << " ";
                 bool required = true, first = true;
@@ -835,6 +848,11 @@ namespace detail {
                     os << "]";
                 if( !m_options.empty() )
                     os << " options";
+                if( !m_cmds.empty() ) {
+                    if( !m_options.empty() )
+                        os << " |";
+                    os << " subcommand";
+                }
                 os << "\n";
             }
 
@@ -859,6 +877,22 @@ namespace detail {
 
             streamHelpColumns( getHelpColumns( m_args ), "\nwhere arguments are:" );
             streamHelpColumns( getHelpColumns( m_options ), "\nwhere options are:" );
+
+            if( !m_cmds.empty() ) {
+                std::vector<HelpColumns> cmdCols;
+                {
+                    cmdCols.reserve( m_cmds.size() );
+                    for( auto const &cmd : m_cmds ) {
+                        if( cmd.m_hidden )
+                            continue;
+                        const std::string &d = cmd.m_exeName.description();
+                        // first line
+                        cmdCols.push_back({ cmd.m_exeName.name(), d.substr(0, d.find('\n')) });
+                    }
+                }
+
+                streamHelpColumns(cmdCols, "\nwhere subcommands are:");
+            }
         }
 
         friend auto operator<<( std::ostream &os, Parser const &parser ) -> std::ostream& {
@@ -894,18 +928,38 @@ namespace detail {
             return Result::ok();
         }
 
+        auto findCmd( const std::string& cmdName ) const -> Parser const* {
+            for( const Parser& cmd : m_cmds ) {
+                if( cmd.m_exeName.name() == cmdName )
+                    return &cmd;
+            }
+            return nullptr;
+        }
+
         using ParserBase::parse;
 
         auto internalParse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
+            if( !m_cmds.empty() && tokens ) {
+                std::string subCommand = tokens->token;
+                if( Parser const *cmd = findCmd( subCommand )) {
+                    return cmd->parse( subCommand, tokens );
+                }
+            }
+
             const std::size_t totalParsers = m_options.size() + m_args.size();
             std::vector<ParserBase const*> parsers(totalParsers);
             std::size_t i = 0;
             for( auto const& opt : m_options ) parsers[i++] = &opt;
             for( auto const& arg : m_args ) parsers[i++] = &arg;
 
-            m_exeName.set( exeName );
+            if( m_isSubcmd )
+                m_exeName.set( tokens->token );
+            else
+                m_exeName.set( exeName );
 
-            auto result = InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
+            auto result = InternalParseResult::ok( m_isSubcmd ?
+                ParseState( ParseResultType::Matched, ++TokenStream( tokens ) ) :
+                ParseState( ParseResultType::NoMatch, tokens ) );
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
@@ -935,11 +989,65 @@ namespace detail {
     auto ComposableParserImpl<DerivedT>::operator|( T const &other ) const -> Parser {
         return Parser() | static_cast<DerivedT const &>( *this ) | other;
     }
+
+    struct Cmd : public Parser {
+        Cmd( std::string& ref, std::string cmdName ) : Parser() {
+            ExeName exe{ ref };
+            exe.set( move( cmdName ), false );
+            m_exeName = exe;
+            m_isSubcmd = true;
+        }
+
+        template<typename Lambda>
+        Cmd( Lambda const& ref, std::string cmdName ) : Parser() {
+            ExeName exe{ ref };
+            exe.set( move( cmdName ), false );
+            m_exeName = exe;
+            m_isSubcmd = true;
+        }
+
+        auto hidden() -> Cmd& {
+            m_hidden = true;
+            return *this;
+        };
+
+        auto operator()( std::string description ) -> Cmd& {
+            m_exeName.description( move( description ) );
+            return *this;
+        };
+    };
+
+    template<typename DerivedT>
+    auto operator,( ComposableParserImpl<DerivedT> const &l, Parser const &r ) -> Parser = delete;
+    template<typename DerivedT>
+    auto operator,( Parser const &l, ComposableParserImpl<DerivedT> const &r ) -> Parser = delete;
+    template<typename DerivedT, typename DerivedU>
+    auto operator,( ComposableParserImpl<DerivedT> const &l, ComposableParserImpl<DerivedU> const &r ) -> Parser = delete;
+
+    // concatenate parsers as subcommands;
+    // precondition: one or both must be subcommand parsers
+    inline auto operator,( Parser const &l, Parser const &r ) -> Parser {
+        assert( l.m_isSubcmd || r.m_isSubcmd );
+
+        Parser const *p1 = &l, *p2 = &r;
+        if ( p1->m_isSubcmd && !p2->m_isSubcmd ) {
+            std::swap( p1, p2 );
+        }
+
+        Parser p = p1->m_isSubcmd ? Parser{} : Parser{ *p1 };
+        if ( p1->m_isSubcmd )
+            p.m_cmds.push_back( *p1 );
+        p.m_cmds.push_back( *p2 );
+        return p;
+    }
+
 } // namespace detail
 
 
 // A Combined parser
 using detail::Parser;
+
+using detail::Cmd;
 
 // A parser for options
 using detail::Opt;
