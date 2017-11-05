@@ -498,11 +498,14 @@ namespace detail {
         std::shared_ptr<BoundRefBase> m_ref;
         std::string m_hint;
         std::string m_description;
+        std::string m_default;
+        bool m_hasDefault;
         mutable std::size_t m_count;
 
         explicit ParserRefImpl( std::shared_ptr<BoundRefBase> const &ref )
         :   m_ref( ref ),
-            m_count( 0 )
+            m_count( 0 ),
+            m_hasDefault( false )
         {}
 
     public:
@@ -510,14 +513,16 @@ namespace detail {
         ParserRefImpl( T &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundRef<T>>( ref ) ),
             m_hint( hint ),
-            m_count( 0 )
+            m_count( 0 ),
+            m_hasDefault( false )
         {}
 
         template<typename LambdaT>
         ParserRefImpl( LambdaT const &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundLambda<LambdaT>>( ref ) ),
             m_hint( hint ),
-            m_count( 0 )
+            m_count( 0 ),
+            m_hasDefault( false )
         {}
 
         auto operator()( std::string const &description ) -> DerivedT & {
@@ -527,6 +532,13 @@ namespace detail {
 
         auto optional() -> DerivedT & {
             m_optionality = Optionality::Optional;
+            return static_cast<DerivedT &>( *this );
+        };
+
+        auto optional( std::string def ) -> DerivedT & {
+            m_optionality = Optionality::Optional;
+            m_hasDefault = true;
+            m_default = std::move( def );
             return static_cast<DerivedT &>( *this );
         };
 
@@ -554,6 +566,8 @@ namespace detail {
         auto validateFinal() const -> Result override {
             if( !isOptional() && count() < 1 )
                 return Result::runtimeError( "Missing token: " + hint() );
+            if( count() == 0 && m_hasDefault )
+                m_ref->setValue( m_default );
             return ComposableParserImpl::validateFinal();
         }
 
@@ -562,6 +576,15 @@ namespace detail {
         }
 
         auto hint() const -> std::string { return m_hint; }
+
+        auto description() const -> std::string {
+            std::string desc = m_description;
+            if( m_hasDefault ) {
+                desc += " Default: ";
+                desc += m_default;
+            }
+            return desc;
+        }
 
         auto count() const -> std::size_t { return m_count; }
     };
@@ -668,9 +691,9 @@ namespace detail {
                     oss << ", ";
                 oss << opt;
             }
-            if( !m_hint.empty() )
-                oss << " <" << m_hint << ">";
-            return { { oss.str(), m_description } };
+            if( !hint().empty() )
+                oss << " <" << hint() << ">";
+            return { { oss.str(), description() } };
         }
 
         auto isMatch( std::string const &optToken ) const -> bool {
