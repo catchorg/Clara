@@ -43,13 +43,13 @@ auto cli
     = Opt( width, "width" )
         ["-w"]["--width"]
         ("How wide should it be?")
-    + Opt( name, "name" )
+    | Opt( name, "name" )
         ["-n"]["--name"]
         ("By what name should I be known")
-    + Opt( doIt )
+    | Opt( doIt )
         ["-d"]["--doit"]
         ("Do the thing" )
-    + Arg( command, "command" )
+    | Arg( command, "command" )
         ("which command to run");
 ```
 

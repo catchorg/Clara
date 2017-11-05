@@ -78,6 +78,14 @@ namespace detail {
         std::string token;
     };
 
+    inline auto isOptPrefix( char c ) -> bool {
+        return c == '-'
+#ifdef CLARA_PLATFORM_WINDOWS
+            || c == '/'
+#endif
+        ;
+    }
+
     // Abstracts iterators into args as a stream of tokens, with option arguments uniformly handled
     class TokenStream {
         using Iterator = std::vector<std::string>::const_iterator;
@@ -94,7 +102,7 @@ namespace detail {
 
             if( it != itEnd ) {
                 auto const &next = *it;
-                if( next[0] == '-' || next[0] == '/' ) {
+                if( isOptPrefix( next[0] ) ) {
                     auto delimiterPos = next.find_first_of( " :=" );
                     if( delimiterPos != std::string::npos ) {
                         m_tokenBuffer.push_back( { TokenType::Option, next.substr( 0, delimiterPos ) } );
@@ -617,9 +625,11 @@ namespace detail {
     };
 
     inline auto normaliseOpt( std::string const &optName ) -> std::string {
+#ifdef CLARA_PLATFORM_WINDOWS
         if( optName[0] == '/' )
             return "-" + optName.substr( 1 );
         else
+#endif
             return optName;
     }
 
@@ -660,11 +670,7 @@ namespace detail {
         }
 
         auto isMatch( std::string const &optToken ) const -> bool {
-#ifdef CLARA_PLATFORM_WINDOWS
             auto normalisedToken = normaliseOpt( optToken );
-#else
-            auto const &normalisedToken = optToken;
-#endif
             for( auto const &name : m_optNames ) {
                 if( normaliseOpt( name ) == normalisedToken )
                     return true;
@@ -712,8 +718,13 @@ namespace detail {
             for( auto const &name : m_optNames ) {
                 if( name.empty() )
                     return Result::logicError( "Option name cannot be empty" );
+#ifdef CLARA_PLATFORM_WINDOWS
                 if( name[0] != '-' && name[0] != '/' )
                     return Result::logicError( "Option name must begin with '-' or '/'" );
+#else
+                if( name[0] != '-' )
+                    return Result::logicError( "Option name must begin with '-'" );
+#endif
             }
             return ParserRefImpl::validateSettings();
         }
@@ -851,10 +862,15 @@ namespace detail {
 
         auto internalParse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
             const size_t totalParsers = m_options.size() + m_args.size();
-            ParserBase const* parsers[totalParsers];
-            size_t i = 0;
-            for( auto const& opt : m_options ) parsers[i++] = &opt;
-            for( auto const& arg : m_args ) parsers[i++] = &arg;
+            assert( totalParsers < 512 );
+            // ParserInfo parseInfos[totalParsers]; // <-- this is what we really want to do
+            ParserBase const* parsers[512];
+
+            {
+                size_t i = 0;
+                for (auto const &opt : m_options) parsers[i++] = &opt;
+                for (auto const &arg : m_args) parsers[i++] = &arg;
+            }
 
             m_exeName.set( exeName );
 
@@ -862,7 +878,8 @@ namespace detail {
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
-                for( auto& parser : parsers ) {
+                for( size_t i = 0; i < totalParsers; ++i ) {
+                    auto&  parser = parsers[i];
                     if( parser->canParse() ) {
                         result = parser->internalParse(exeName, result.value().remainingTokens());
                         if (!result)
