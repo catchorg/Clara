@@ -545,11 +545,15 @@ namespace detail {
             else
                 return 1;
         }
+
+        auto validateSettings() const -> Result override {
+            m_count = 0;
+            return ComposableParserImpl::validateSettings();
+        }
         
         auto validateFinal() const -> Result override {
             if( !isOptional() && count() < 1 )
                 return Result::runtimeError( "Missing token: " + hint() );
-            m_count = 0;
             return ComposableParserImpl::validateFinal();
         }
 
