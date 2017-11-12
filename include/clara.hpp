@@ -560,7 +560,7 @@ namespace detail {
 
         auto validateSettings() const -> Result override {
             m_count = 0;
-            return ComposableParserImpl::validateSettings();
+            return ComposableParserImpl<DerivedT>::validateSettings();
         }
         
         auto validateFinal() const -> Result override {
@@ -568,7 +568,7 @@ namespace detail {
                 return Result::runtimeError( "Missing token: " + hint() );
             if( count() == 0 && m_hasDefault )
                 m_ref->setValue( m_default );
-            return ComposableParserImpl::validateFinal();
+            return ComposableParserImpl<DerivedT>::validateFinal();
         }
 
         auto canParse() const -> bool override {
