@@ -498,9 +498,9 @@ namespace detail {
         std::shared_ptr<BoundRefBase> m_ref;
         std::string m_hint;
         std::string m_description;
+        mutable std::size_t m_count;
         std::string m_default;
         bool m_hasDefault;
-        mutable std::size_t m_count;
 
         explicit ParserRefImpl( std::shared_ptr<BoundRefBase> const &ref )
         :   m_ref( ref ),
