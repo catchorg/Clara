@@ -548,13 +548,13 @@ namespace detail {
 
         auto validateSettings() const -> Result override {
             m_count = 0;
-            return ComposableParserImpl::validateSettings();
+            return ComposableParserImpl<DerivedT>::validateSettings();
         }
         
         auto validateFinal() const -> Result override {
             if( !isOptional() && count() < 1 )
                 return Result::runtimeError( "Missing token: " + hint() );
-            return ComposableParserImpl::validateFinal();
+            return ComposableParserImpl<DerivedT>::validateFinal();
         }
 
         auto canParse() const -> bool override {
