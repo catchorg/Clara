@@ -106,13 +106,13 @@ TEST_CASE( "Combined parser" ) {
         oss << parser;
         auto usage = oss.str();
         REQUIRE(usage ==
-                    "usage:\n"
+                    "Usage:\n"
                     "  <executable> [<test name|tags|pattern> ... ] <options>\n"
                     "\n"
-                    "where arguments are:\n"
+                    "Where arguments are:\n"
                     "  <test name|tags|pattern>    which test or tests to use\n"
                     "\n"
-                    "where options are:\n"
+                    "Where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
                     "  --rng-seed, -r <time|value>    set a specific seed for random numbers\n"
                     "  -n, --name <name>              the name to use\n"
@@ -283,13 +283,13 @@ TEST_CASE( "cmdline" ) {
         oss << cli;
         auto usage = oss.str();
         REQUIRE(usage ==
-                    "usage:\n"
+                    "Usage:\n"
                     "  <executable> [<first arg> <second arg>] <options>\n"
                     "\n"
-                    "where arguments are:\n"
+                    "Where arguments are:\n"
                     "  <first arg>    First position\n"
                     "\n"
-                    "where options are:\n"
+                    "Where options are:\n"
                     "  -o, --output <filename>    specifies output file\n"
                     "  -n <an integral value>\n"
                     "  -i <index>                 An index, which is an integer between 0 and 10,\n"
@@ -412,15 +412,15 @@ TEST_CASE( "Subcommands" ) {
         oss << cli;
         auto usage = oss.str();
         REQUIRE(usage ==
-            R"(usage:
+            R"(Usage:
   <executable> <options>
   <executable> <subcommand>
   <executable> important <arg1> <options>
 
-where options are:
+Where options are:
   -?, -h, --help    display usage information
 
-where subcommands are:
+Where subcommands are:
   subcommand    Execute subcommand
   important     Execute important subcommand
 )"
@@ -433,13 +433,13 @@ where subcommands are:
         REQUIRE(usage ==
             R"(Execute subcommand
 
-usage:
+Usage:
   subcommand <arg1> <options>
 
-where arguments are:
+Where arguments are:
   <arg1>    Arg1
 
-where options are:
+Where options are:
   --opt    Opt
 )"
 );

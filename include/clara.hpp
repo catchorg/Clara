@@ -848,7 +848,7 @@ namespace detail {
                         os << " <options>";
                 };
 
-                os << "usage:\n" << "  " << m_exeName.name();
+                os << "Usage:\n" << "  " << m_exeName.name();
                 streamArgsAndOpts( *this );
                 if( !m_cmds.empty() ) {
                     os << "\n  " << m_exeName.name();
@@ -885,8 +885,8 @@ namespace detail {
                 }
             };
 
-            streamHelpColumns( getHelpColumns( m_args ), "\nwhere arguments are:" );
-            streamHelpColumns( getHelpColumns( m_options ), "\nwhere options are:" );
+            streamHelpColumns( getHelpColumns( m_args ), "\nWhere arguments are:" );
+            streamHelpColumns( getHelpColumns( m_options ), "\nWhere options are:" );
 
             if( !m_cmds.empty() ) {
                 std::vector<HelpColumns> cmdCols;
@@ -901,7 +901,7 @@ namespace detail {
                     }
                 }
 
-                streamHelpColumns(cmdCols, "\nwhere subcommands are:");
+                streamHelpColumns(cmdCols, "\nWhere subcommands are:");
             }
         }
 
