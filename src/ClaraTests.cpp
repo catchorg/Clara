@@ -107,7 +107,7 @@ TEST_CASE( "Combined parser" ) {
         auto usage = oss.str();
         REQUIRE(usage ==
                     "usage:\n"
-                    "  <executable> [<test name|tags|pattern> ... ] options\n"
+                    "  <executable> [<test name|tags|pattern> ... ] <options>\n"
                     "\n"
                     "where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
@@ -282,7 +282,7 @@ TEST_CASE( "cmdline" ) {
         auto usage = oss.str();
         REQUIRE(usage ==
                     "usage:\n"
-                    "  <executable> [<first arg> <second arg>] options\n"
+                    "  <executable> [<first arg> <second arg>] <options>\n"
                     "\n"
                     "where options are:\n"
                     "  -o, --output <filename>    specifies output file\n"
@@ -350,6 +350,9 @@ TEST_CASE( "Subcommands" ) {
         , Cmd{ subcommand, "subcommand" }( "Execute subcommand" )
           | Arg{ subArg, "arg1" }( "Arg1" ).required()
           | Opt{ subOpt }["--opt"]( "Opt" )
+        , Cmd{ subcommand, "important" }( "Execute important subcommand" ).alludeInUsage()
+          | Arg{ subArg, "arg1" }( "Arg1" ).required()
+          | Opt{ subOpt }["--opt"]( "Opt" )
         , Cmd{ subcommand, "internal" }( "Execute another subcommand" ).hidden()
     );
     
@@ -405,18 +408,20 @@ TEST_CASE( "Subcommands" ) {
         auto usage = oss.str();
         REQUIRE(usage ==
             R"(usage:
-  <executable>  options | subcommand
+  <executable> <options>
+  <executable> <subcommand>
+  <executable> important <arg1> <options>
 
 where options are:
   -?, -h, --help    display usage information
 
 where subcommands are:
   subcommand    Execute subcommand
+  important     Execute important subcommand
 )"
         );
     }
     SECTION( "subcommand usage" ) {
-        std::cout << *cli.findCmd( "subcommand" );
         std::ostringstream oss;
         oss << *cli.findCmd( "subcommand" );
         auto usage = oss.str();
@@ -424,7 +429,7 @@ where subcommands are:
             R"(Execute subcommand
 
 usage:
-  subcommand <arg1> options
+  subcommand <arg1> <options>
 
 where arguments are:
    <arg1>    Arg1

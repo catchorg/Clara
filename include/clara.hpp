@@ -781,6 +781,7 @@ namespace detail {
 
         mutable ExeName m_exeName;
         bool m_isSubcmd = false;
+        bool m_alludeInUsage = false;
         std::vector<Parser> m_cmds;
         std::vector<Opt> m_options;
         std::vector<Arg> m_args;
@@ -829,29 +830,38 @@ namespace detail {
                 os << m_exeName.description() << std::endl << std::endl;
             }
             if (!m_exeName.name().empty()) {
-                os << "usage:\n" << "  " << m_exeName.name() << " ";
-                bool required = true, first = true;
-                for( auto const &arg : m_args ) {
-                    if (first)
-                        first = false;
-                    else
+                auto streamArgsAndOpts = [this, &os]( const Parser& p ) {
+                    bool required = true, first = true;
+                    for( auto const &arg : p.m_args ) {
                         os << " ";
-                    if( arg.isOptional() && required ) {
-                        os << "[";
-                        required = false;
+                        if( arg.isOptional() && required ) {
+                            os << "[";
+                            required = false;
+                        }
+                        os << "<" << arg.hint() << ">";
+                        if( arg.cardinality() == 0 )
+                            os << " ... ";
                     }
-                    os << "<" << arg.hint() << ">";
-                    if( arg.cardinality() == 0 )
-                        os << " ... ";
-                }
-                if( !required )
-                    os << "]";
-                if( !m_options.empty() )
-                    os << " options";
+                    if( !required )
+                        os << "]";
+                    if( !p.m_options.empty() )
+                        os << " <options>";
+                };
+
+                os << "usage:\n" << "  " << m_exeName.name();
+                streamArgsAndOpts( *this );
                 if( !m_cmds.empty() ) {
-                    if( !m_options.empty() )
-                        os << " |";
-                    os << " subcommand";
+                    os << "\n  " << m_exeName.name();
+                    os << " <subcommand>";
+                    for( const Parser& sub : m_cmds )
+                    {
+                        if( sub.m_alludeInUsage )
+                        {
+                            os << "\n  " << m_exeName.name();
+                            os << " " << sub.m_exeName.name();
+                            streamArgsAndOpts( sub );
+                        }
+                    }
                 }
                 os << "\n";
             }
@@ -1009,12 +1019,17 @@ namespace detail {
         auto hidden() -> Cmd& {
             m_hidden = true;
             return *this;
-        };
+        }
+
+        auto alludeInUsage() -> Cmd& {
+            m_alludeInUsage = true;
+            return *this;
+        }
 
         auto operator()( std::string description ) -> Cmd& {
             m_exeName.description( move( description ) );
             return *this;
-        };
+        }
     };
 
     template<typename DerivedT>
