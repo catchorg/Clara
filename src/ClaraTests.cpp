@@ -109,6 +109,9 @@ TEST_CASE( "Combined parser" ) {
                     "usage:\n"
                     "  <executable> [<test name|tags|pattern> ... ] <options>\n"
                     "\n"
+                    "where arguments are:\n"
+                    "  <test name|tags|pattern>    which test or tests to use\n"
+                    "\n"
                     "where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
                     "  --rng-seed, -r <time|value>    set a specific seed for random numbers\n"
@@ -175,8 +178,7 @@ struct TestOpt {
               ( "A flag" )
           | Arg( firstPos, "first arg" )
               ( "First position" )
-          | Arg( secondPos, "second arg" )
-              ( "Second position" );
+          | Arg( secondPos, "second arg" );
     }
 };
 
@@ -283,6 +285,9 @@ TEST_CASE( "cmdline" ) {
         REQUIRE(usage ==
                     "usage:\n"
                     "  <executable> [<first arg> <second arg>] <options>\n"
+                    "\n"
+                    "where arguments are:\n"
+                    "  <first arg>    First position\n"
                     "\n"
                     "where options are:\n"
                     "  -o, --output <filename>    specifies output file\n"
@@ -432,7 +437,7 @@ usage:
   subcommand <arg1> <options>
 
 where arguments are:
-   <arg1>    Arg1
+  <arg1>    Arg1
 
 where options are:
   --opt    Opt
