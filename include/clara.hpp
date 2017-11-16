@@ -626,7 +626,7 @@ namespace detail {
                 return {};
             else {
                 std::ostringstream oss;
-                oss << " <" << m_hint << ">";
+                oss << "<" << m_hint << ">";
                 return { { oss.str(), m_description} };
             }
         }
