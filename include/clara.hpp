@@ -242,7 +242,7 @@ namespace detail {
         auto errorMessage() const -> std::string { return m_errorMessage; }
 
     protected:
-        virtual void enforceOk() const {
+        void enforceOk() const override {
             // !TBD: If no exceptions, std::terminate here or something
             switch( m_type ) {
                 case ResultBase::LogicError:
