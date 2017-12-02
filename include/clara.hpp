@@ -785,6 +785,8 @@ namespace detail {
             for( auto const &cols : rows )
                 optWidth = (std::max)(optWidth, cols.left.size() + 2);
 
+            optWidth = (std::min)(optWidth, consoleWidth/2);
+
             for( auto const &cols : rows ) {
                 auto row =
                         TextFlow::Column( cols.left ).width( optWidth ).indent( 2 ) +
