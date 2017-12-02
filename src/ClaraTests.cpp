@@ -321,3 +321,50 @@ TEST_CASE( "Unrecognised opts" ) {
     CHECK( !result );
     CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
+
+std::string toString( Opt const& opt ) {
+    std::ostringstream oss;
+    oss << (Parser() | opt);
+    return oss.str();
+}
+
+TEST_CASE( "different widths" ) {
+
+    std::string s;
+
+    auto shortOpt
+        = Opt( s, "short" )
+           ["-s"]["--short"]
+           ( "not much" );
+    auto longHint
+        = Opt( s, "A very very long hint that should force the whole line to wrap awkwardly. I hope no-one ever writes anything like thus - but there's always *someone*" )
+           ["-x"]
+           ("short description");
+
+    auto longDesc
+        = Opt( s, "hint")
+            ["-y"]
+            ( "In this one it's the description field that is really really long. We should be split over several lines, but complete the description before starting to show the next option" );
+
+    auto longOptName
+            = Opt( s, "hint")
+            ["--this-one-just-has-an-overly-long-option-name-that-should-push-the-left-hand-column-out"]
+            ( "short desc" );
+
+    auto longEverything
+        = Opt( s, "this is really over the top, but it has to be tested. In this case we have a very long hint (far longer than anyone should ever even think of using), which should be enough to wrap just on its own...")
+            ["--and-a-ridiculously-long-long-option-name-that-would-be-silly-to-write-but-hey-if-it-can-handle-this-it-can-handle-anything-right"]
+            ( "*and* a stupid long description, which seems a bit redundant give all the other verbosity. But some people just love to write. And read. You have to be prepared to do a lot of both for this to be useful.");
+
+    SECTION( "long hint" )
+        REQUIRE_NOTHROW( toString( longHint ) == "?" );
+
+    SECTION( "long desc" )
+        REQUIRE_NOTHROW( toString( longDesc ) );
+
+    SECTION( "long opt name" )
+        REQUIRE_NOTHROW( toString( longOptName ) == "?" );
+
+    SECTION( "long everything" )
+        REQUIRE_NOTHROW( toString( longEverything ) == "?" );
+}
