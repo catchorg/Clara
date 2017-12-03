@@ -32,7 +32,7 @@ if( !result ) {
 
 Note that exceptions are not used for error handling.
 
-You can combine parsers by composing with `+`, like this:
+You can combine parsers by composing with `|`, like this:
 
 ```c++
 int width = 0;
