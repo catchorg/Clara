@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/github/catchorg/Clara?brach=master&svg=true)](https://ci.appveyor.com/project/catchorg/clara)
+
 # Clara 1.0
 
 A simple to use, composable, command line parser for C++ 11 and beyond.
