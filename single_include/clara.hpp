@@ -370,7 +370,7 @@ namespace detail {
     template<typename ClassT, typename ReturnT, typename ArgT>
     struct UnaryLambdaTraits<ReturnT( ClassT::* )( ArgT ) const> {
         static const bool isValid = true;
-        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;;
+        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;
         using ReturnType = ReturnT;
     };
 
