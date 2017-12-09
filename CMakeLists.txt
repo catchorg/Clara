@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.6.2)
 project(Clara)
 
 set(SOURCE_FILES src/main.cpp src/ClaraTests.cpp src/Surrogate.cpp include/clara.hpp)
