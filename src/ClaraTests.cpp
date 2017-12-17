@@ -6,8 +6,9 @@
 
 using namespace clara;
 
+namespace Catch {
 template<>
-struct Catch::StringMaker<clara::detail::InternalParseResult> {
+struct StringMaker<clara::detail::InternalParseResult> {
     static std::string convert( clara::detail::InternalParseResult const& result ) {
         switch( result.type() ) {
             case clara::detail::ResultBase::Ok:
@@ -21,6 +22,7 @@ struct Catch::StringMaker<clara::detail::InternalParseResult> {
         }
     }
 };
+}
 
 // !TBD
 // for Catch:
