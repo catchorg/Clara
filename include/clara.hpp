@@ -322,6 +322,18 @@ namespace detail {
         return ParserResult::ok( ParseResultType::Matched );
     }
 
+#if  __cpp_if_constexpr // is a C++17 feature. If this is there, then std::optional<T> too
+                        // __has_include is not rliable: gcc with -std=c++11 returns true here
+#define CLARA_OPTIONAL_VALUES
+    template<typename T>
+    inline auto convertInto( std::string const &source, std::optional<T>& target_opt ) -> ParserResult {
+        T target;
+        auto result = convertInto(source,target);
+        if (result)
+            target_opt = target;
+        return result;
+    }
+#endif
     struct BoundRefBase {
         BoundRefBase() = default;
         BoundRefBase( BoundRefBase const & ) = delete;
