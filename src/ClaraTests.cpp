@@ -1,9 +1,11 @@
+#ifdef CLARA_OPTIONAL_VALUES
+#include <optional>
+#endif
 #include "clara.hpp"
 
 #include "catch.hpp"
 
 #include <iostream>
-#include <optional>
 using namespace clara;
 
 namespace Catch {
