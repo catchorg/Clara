@@ -563,7 +563,7 @@ namespace detail {
             if( !isOptional() && count() < 1 )
                 return Result::runtimeError( "Missing token: " + hint() );
             m_count = 0;
-            return ComposableParserImpl::validateFinal();
+            return ComposableParserImpl<DerivedT>::validateFinal();
         }
 
         auto canParse() const -> bool override {
@@ -625,7 +625,7 @@ namespace detail {
 
     class Arg : public ParserRefImpl<Arg> {
     public:
-        using ParserRefImpl::ParserRefImpl;
+        using ParserRefImpl<Arg>::ParserRefImpl;
 
         auto getHelpColumns() const -> std::vector<HelpColumns> {
             if( m_description.empty() || m_hidden )
@@ -668,15 +668,15 @@ namespace detail {
 
     public:
         template<typename LambdaT>
-        explicit Opt( LambdaT const &ref ) : ParserRefImpl( std::make_shared<BoundFlagLambda<LambdaT>>( ref ) ) {}
+        explicit Opt( LambdaT const &ref ) : ParserRefImpl<Opt>( std::make_shared<BoundFlagLambda<LambdaT>>( ref ) ) {}
 
-        explicit Opt( bool &ref ) : ParserRefImpl( std::make_shared<BoundFlagRef>( ref ) ) {}
+        explicit Opt( bool &ref ) : ParserRefImpl<Opt>( std::make_shared<BoundFlagRef>( ref ) ) {}
 
         template<typename LambdaT>
-        Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
+        Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl<Opt>( ref, hint ) {}
 
         template<typename T>
-        Opt( T &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
+        Opt( T &ref, std::string const &hint ) : ParserRefImpl<Opt>( ref, hint ) {}
 
         auto operator[]( std::string const &optName ) -> Opt & {
             m_optNames.push_back( optName );
@@ -758,7 +758,7 @@ namespace detail {
                     return Result::logicError( "Option name must begin with '-'" );
 #endif
             }
-            return ParserRefImpl::validateSettings();
+            return ParserRefImpl<Opt>::validateSettings();
         }
     };
 
