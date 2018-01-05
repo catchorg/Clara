@@ -422,7 +422,7 @@ namespace detail {
         return !result
            ? result
            : LambdaInvoker<typename UnaryLambdaTraits<L>::ReturnType>::invoke( lambda, temp );
-    };
+    }
 
 
     template<typename L>
