@@ -49,27 +49,37 @@ TEST_CASE( "single parsers" ) {
 
     SECTION( "-n" ) {
         p.parse( Args{ "TestApp", "-n", "Vader" } );
-        REQUIRE( name == "Vader");
+        REQUIRE( name == "Vader" );
     }
     SECTION( "--name" ) {
         p.parse( Args{ "TestApp", "--name", "Vader" } );
-        REQUIRE( name == "Vader");
+        REQUIRE( name == "Vader" );
     }
     SECTION( "-n:" ) {
         p.parse( Args{ "TestApp", "-n:Vader" } );
-        REQUIRE( name == "Vader");
+        REQUIRE( name == "Vader" );
     }
     SECTION( "-n=" ) {
         p.parse( Args{ "TestApp", "-n=Vader" } );
-        REQUIRE( name == "Vader");
+        REQUIRE( name == "Vader" );
     }
     SECTION( "no args" ) {
         p.parse( Args{ "TestApp" } );
-        REQUIRE( name == "");
+        REQUIRE( name == "" );
     }
     SECTION( "different args" ) {
         p.parse( Args{ "TestApp", "-f" } );
-        REQUIRE( name == "");
+        REQUIRE( name == "" );
+    }
+    SECTION( "default value" ) {
+        p.optional( "Vader" );
+        p.parse( Args{ "TestApp" } );
+        REQUIRE( name == "Vader" );
+    }
+    SECTION( "set and default value" ) {
+        p.optional( "Darth" );
+        p.parse( Args{ "TestApp", "-n", "Vader" } );
+        REQUIRE( name == "Vader" );
     }
 }
 
@@ -100,6 +110,7 @@ TEST_CASE( "Combined parser" ) {
             | Opt( [&]( double value ){ config.m_value = value; }, "number" )
                 ["-d"]["--double"]
                 ( "just some number" )
+                .optional( "1123.58" )
             | Arg( config.m_tests, "test name|tags|pattern" )
                 ( "which test or tests to use" );
 
@@ -116,11 +127,11 @@ TEST_CASE( "Combined parser" ) {
                     "  --rng-seed, -r <time|value>    set a specific seed for random numbers\n"
                     "  -n, --name <name>              the name to use\n"
                     "  -f, --flag                     a flag to set\n"
-                    "  -d, --double <number>          just some number\n"
+                    "  -d, --double <number>          just some number Default: 1123.58\n"
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-r", "42", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
@@ -128,6 +139,13 @@ TEST_CASE( "Combined parser" ) {
         REQUIRE( config.m_value == 123.45 );
         REQUIRE( config.m_tests == std::vector<std::string> { "test1", "test2" } );
         CHECK( showHelp == false );
+    }
+    SECTION( "missing required" ) {
+        using namespace Catch::Matchers;
+
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), Contains( "Missing token" ) && Contains( "time|value" ) );
     }
     SECTION( "help" ) {
         auto result = parser.parse( Args{ "TestApp", "-?", "-n:NotSet" } );
