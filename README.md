@@ -87,6 +87,9 @@ Some of the key features:
 - Uses Result types for error propagation, rather than exceptions (doesn't yet build with exceptions disabled, but that will be coming later)
 - Models POSIX standards for short and long opt behaviour.
 
+## Roadmap
+
+To see which direction Clara is going in, please see [the roadmap](Roadmap.md)
 
 ## Old version
 
