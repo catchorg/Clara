@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6.2)
 project(Clara)
 
-set(SOURCE_FILES src/main.cpp src/ClaraTests.cpp src/Surrogate.cpp include/clara.hpp)
+set(SOURCE_FILES src/main.cpp src/ClaraTests.cpp include/clara.hpp)
 include_directories( include third_party )
 add_executable(ClaraTests ${SOURCE_FILES})
 
