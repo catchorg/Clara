@@ -355,7 +355,7 @@ namespace detail {
         auto isFlag() const -> bool override { return true; }
 
         auto setValue( std::string const &arg ) -> ParserResult override {
-            bool flag;
+            bool flag = false;
             auto result = convertInto( arg, flag );
             if( result )
                 setFlag( flag );
