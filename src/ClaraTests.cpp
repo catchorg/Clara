@@ -1,9 +1,11 @@
+#ifdef CLARA_OPTIONAL_VALUES
+#include <optional>
+#endif
 #include "clara.hpp"
 
 #include "catch.hpp"
 
 #include <iostream>
-
 using namespace clara;
 
 namespace Catch {
@@ -38,6 +40,29 @@ struct StringMaker<clara::detail::InternalParseResult> {
 // other dependencies/ hierarchical parsers
 // Exclusive() parser for choices
 
+#ifdef CLARA_OPTIONAL_VALUES
+TEST_CASE( "optional value is not set" ) {
+    std::optional<std::string> name;
+    auto p = Opt(name, "name")
+    ["-n"]["--name"]
+            ("the name to use");
+    REQUIRE( !name.has_value() );
+
+}
+
+TEST_CASE( "optional value is set" ) {
+    std::optional<std::string> name;
+    auto parser = Opt(name, "name")
+    ["-n"]["--name"]
+            ("the name to use");
+    auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+    REQUIRE( name.has_value() );
+    CHECK( result );
+    CHECK( result.value().type() == ParseResultType::Matched );
+    REQUIRE( name.value() == "Bill" );
+
+}
+#endif
 TEST_CASE( "single parsers" ) {
 
     std::string name;
