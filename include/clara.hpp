@@ -579,6 +579,8 @@ namespace detail {
     public:
         using ParserRefImpl::ParserRefImpl;
 
+        using ParserBase::parse;
+
         auto parse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto validationResult = validate();
             if( !validationResult )
