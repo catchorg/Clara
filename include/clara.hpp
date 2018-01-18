@@ -733,28 +733,13 @@ namespace detail {
             m_exeName = exeName;
             return *this;
         }
-		
-		auto operator+=( ExeName const &exeName ) -> Parser & {
-            m_exeName = exeName;
-            return *this;
-        }
 
         auto operator|=( Arg const &arg ) -> Parser & {
             m_args.push_back(arg);
             return *this;
         }
-		
-		auto operator+=( Arg const &arg ) -> Parser & {
-            m_args.push_back(arg);
-            return *this;
-        }
 
         auto operator|=( Opt const &opt ) -> Parser & {
-            m_options.push_back(opt);
-            return *this;
-        }
-
-        auto operator+( Opt const &opt ) -> Parser & {
             m_options.push_back(opt);
             return *this;
         }
@@ -765,21 +750,16 @@ namespace detail {
             return *this;
         }
 
-        auto operator+=( Parser const &other ) -> Parser & {
-            m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
-            m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
-            return *this;
-        }
-
         template<typename T>
         auto operator|( T const &other ) const -> Parser {
             return Parser( *this ) |= other;
         }
 
+        // Forward deprecated interface with '+' instead of '|'
         template<typename T>
-        auto operator+( T const &other ) const -> Parser {
-            return Parser( *this ) |= other;
-        }
+        auto operator+=( T const &other ) -> Parser & { return operator|=( other ); }
+        template<typename T>
+        auto operator+( T const &other ) const -> Parser { return operator|( other ); }
 
         auto getHelpColumns() const -> std::vector<HelpColumns> {
             std::vector<HelpColumns> cols;
