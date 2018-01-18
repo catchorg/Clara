@@ -1,5 +1,11 @@
-// v1.0-develop.2
-// See https://github.com/philsquared/Clara
+// Copyright 2017 Two Blue Cubes Ltd. All rights reserved.
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+// See https://github.com/philsquared/Clara for more details
+
+// Clara v1.1.0
 
 #ifndef CLARA_HPP_INCLUDED
 #define CLARA_HPP_INCLUDED
@@ -18,8 +24,8 @@
 //
 // A single-header library for wrapping and laying out basic text, by Phil Nash
 //
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+// This work is licensed under the BSD 2-Clause license.
+// See the accompanying LICENSE file, or the one at https://opensource.org/licenses/BSD-2-Clause
 //
 // This project is hosted at https://github.com/philsquared/textflowcpp
 
@@ -370,7 +376,7 @@ namespace detail {
     template<typename ClassT, typename ReturnT, typename ArgT>
     struct UnaryLambdaTraits<ReturnT( ClassT::* )( ArgT ) const> {
         static const bool isValid = true;
-        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;;
+        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;
         using ReturnType = ReturnT;
     };
 
@@ -535,7 +541,7 @@ namespace detail {
             return *this;
         }
 
-        ~ResultValueBase() {
+        ~ResultValueBase() override {
             if( m_type == Ok )
                 m_value.~T();
         }
@@ -573,7 +579,7 @@ namespace detail {
         auto errorMessage() const -> std::string { return m_errorMessage; }
 
     protected:
-        virtual void enforceOk() const {
+        void enforceOk() const override {
             // !TBD: If no exceptions, std::terminate here or something
             switch( m_type ) {
                 case ResultBase::LogicError:
@@ -680,7 +686,7 @@ namespace detail {
         auto isFlag() const -> bool override { return true; }
 
         auto setValue( std::string const &arg ) -> ParserResult override {
-            bool flag;
+            bool flag = false;
             auto result = convertInto( arg, flag );
             if( result )
                 setFlag( flag );
@@ -753,7 +759,7 @@ namespace detail {
         return !result
            ? result
            : LambdaInvoker<typename UnaryLambdaTraits<L>::ReturnType>::invoke( lambda, temp );
-    };
+    }
 
 
     template<typename L>
@@ -803,8 +809,8 @@ namespace detail {
     public:
         template<typename T>
         auto operator|( T const &other ) const -> Parser;
-		
-        template<typename T>
+
+		template<typename T>
         auto operator+( T const &other ) const -> Parser;
     };
 
@@ -1059,27 +1065,12 @@ namespace detail {
             return *this;
         }
 
-        auto operator+=( ExeName const &exeName ) -> Parser & {
-            m_exeName = exeName;
-            return *this;
-        }
-
         auto operator|=( Arg const &arg ) -> Parser & {
             m_args.push_back(arg);
             return *this;
         }
 
-        auto operator+=( Arg const &arg ) -> Parser & {
-            m_args.push_back(arg);
-            return *this;
-        }
-
         auto operator|=( Opt const &opt ) -> Parser & {
-            m_options.push_back(opt);
-            return *this;
-        }
-
-        auto operator+=( Opt const &opt ) -> Parser & {
             m_options.push_back(opt);
             return *this;
         }
@@ -1090,21 +1081,16 @@ namespace detail {
             return *this;
         }
 
-        auto operator+=( Parser const &other ) -> Parser & {
-            m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
-            m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
-            return *this;
-        }
-
         template<typename T>
         auto operator|( T const &other ) const -> Parser {
             return Parser( *this ) |= other;
         }
 
+        // Forward deprecated interface with '+' instead of '|'
         template<typename T>
-        auto operator+( T const &other ) const -> Parser {
-            return Parser( *this ) |= other;
-        }
+        auto operator+=( T const &other ) -> Parser & { return operator|=( other ); }
+        template<typename T>
+        auto operator+( T const &other ) const -> Parser { return operator|( other ); }
 
         auto getHelpColumns() const -> std::vector<HelpColumns> {
             std::vector<HelpColumns> cols;
@@ -1144,6 +1130,8 @@ namespace detail {
             size_t optWidth = 0;
             for( auto const &cols : rows )
                 optWidth = (std::max)(optWidth, cols.left.size() + 2);
+
+            optWidth = (std::min)(optWidth, consoleWidth/2);
 
             for( auto const &cols : rows ) {
                 auto row =
