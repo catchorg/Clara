@@ -347,6 +347,9 @@ namespace detail {
         auto isFlag() const -> bool override { return false; }
 
         auto setFlag( bool ) -> ParserResult override {
+            // This should not be able to occur, unless Clara's logic is wrong.
+            // It would be better if we could refactor this so that setFlag() was not
+            // part of the virtual interface, and therefore need not be supplied here
             return ParserResult::logicError( "Flags can only be set on boolean fields" );
         }
     };
@@ -354,12 +357,11 @@ namespace detail {
     struct BoundFlagRefBase : BoundRefBase {
         auto isFlag() const -> bool override { return true; }
 
-        auto setValue( std::string const &arg ) -> ParserResult override {
-            bool flag = false;
-            auto result = convertInto( arg, flag );
-            if( result )
-                setFlag( flag );
-            return result;
+        auto setValue( std::string const & ) -> ParserResult override {
+            // This should not be able to occur, unless Clara's logic is wrong.
+            // It would be better if we could refactor this so that setFlag() was not
+            // part of the virtual interface, and therefore need not be supplied here
+            return ParserResult::logicError( "Values can only be set on non boolean fields" );
         }
     };
 
