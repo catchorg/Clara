@@ -252,6 +252,30 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE(config.flag == false);
         }
+        
+        SECTION( "arg before flag" )
+        {
+            auto result = cli.parse({ "TestApp", "-f", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("following flag")
+        {
+            auto result = cli.parse({ "TestApp", "something", "-f" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("no flag")
+        {
+            auto result = cli.parse({ "TestApp", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag == false );
+            REQUIRE( config.firstPos == "something" );
+        }
     }
 
 #ifdef CLARA_PLATFORM_WINDOWS
