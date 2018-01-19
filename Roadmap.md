@@ -29,7 +29,7 @@ live in, going in a certain direction.
 - Finish work on "required" parsers [#39](https://github.com/catchorg/Clara/issues/39), [#16](https://github.com/catchorg/Clara/issues/16) & [PR #28](https://github.com/catchorg/Clara/pull/28)
 - Finish work on removing exceptions completely (or making them "optional")
 - (compiler conditional) Support for `std::optional` and maybe other optional types (e.g. boost) [#4](https://github.com/catchorg/Clara/issues/4) & [PR #45](https://github.com/catchorg/Clara/pull/45)
-- Arg[0] support on Windows [#29](https://github.com/catchorg/Clara/issues/29)
+- Arg\[0] support on Windows [#29](https://github.com/catchorg/Clara/issues/29)
  
 ### Milestone 2: Maidstone
 
