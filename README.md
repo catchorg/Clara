@@ -1,4 +1,4 @@
-# Clara 1.1.0
+# Clara v1.1.1
 [![Build Status](https://travis-ci.org/catchorg/Clara.svg?branch=master)](https://travis-ci.org/catchorg/Clara)
 [![Build status](https://ci.appveyor.com/api/projects/status/github/catchorg/Clara?brach=master&svg=true)](https://ci.appveyor.com/project/catchorg/clara)
 [![codecov](https://codecov.io/gh/catchorg/Clara/branch/master/graph/badge.svg)](https://codecov.io/gh/catchorg/Clara)
@@ -94,7 +94,7 @@ To see which direction Clara is going in, please see [the roadmap](Roadmap.md)
 ## Old version
 
 If you used the earlier, v0.x, version of Clara please note that this is a complete rewrite which assumes C++11 and has
-a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual 
+a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual
 work - so don't take this version until you're ready (and, of course, able to use C++11).
 
 I hope you'll find the new interface an improvement - and this will be built on to offer new features moving forwards.

@@ -5,7 +5,7 @@
 //
 // See https://github.com/philsquared/Clara for more details
 
-// Clara v1.1.0
+// Clara v1.1.1
 
 #ifndef CLARA_HPP_INCLUDED
 #define CLARA_HPP_INCLUDED
@@ -462,7 +462,7 @@ namespace detail {
     public:
         template<typename T>
         auto operator|( T const &other ) const -> Parser;
-		
+
 		template<typename T>
         auto operator+( T const &other ) const -> Parser;
     };
