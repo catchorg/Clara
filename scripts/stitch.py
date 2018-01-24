@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # This is an initial cut of a general header stitching script.
 # It is currently hard-coded to work with Clara, but that is purely
 # a path thing. The next step is the genericise this further and

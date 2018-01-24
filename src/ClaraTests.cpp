@@ -259,6 +259,30 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE(config.flag == false);
         }
+        
+        SECTION( "arg before flag" )
+        {
+            auto result = cli.parse({ "TestApp", "-f", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("following flag")
+        {
+            auto result = cli.parse({ "TestApp", "something", "-f" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("no flag")
+        {
+            auto result = cli.parse({ "TestApp", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag == false );
+            REQUIRE( config.firstPos == "something" );
+        }
     }
 
 #ifdef CLARA_PLATFORM_WINDOWS
@@ -277,6 +301,62 @@ TEST_CASE( "cmdline" ) {
 
         REQUIRE( config.firstPos == "1st" );
         REQUIRE( config.secondPos == "2nd" );
+    }
+}
+
+TEST_CASE( "flag parser" ) {
+
+    bool flag = false;
+    auto p = Opt( flag, "true|false" )
+            ["-f"]
+            ("A flag");
+
+    SECTION( "set flag with true" ) {
+        auto result = p.parse( {"TestApp", "-f", "true"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with yes" ) {
+        auto result = p.parse( {"TestApp", "-f", "yes"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with y" ) {
+        auto result = p.parse( {"TestApp", "-f", "y"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with 1" ) {
+        auto result = p.parse( {"TestApp", "-f", "1"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with on" ) {
+        auto result = p.parse( {"TestApp", "-f", "on"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with tRUe" ) {
+        auto result = p.parse( {"TestApp", "-f", "tRUe"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+
+    SECTION( "unset flag with false" ) {
+        flag = true;
+        auto result = p.parse( {"TestApp", "-f", "false"} );
+        REQUIRE( result) ;
+        REQUIRE( flag == false );
+    }
+    SECTION( "invalid inputs" ) {
+        using namespace Catch::Matchers;
+        auto result = p.parse( {"TestApp", "-f", "what"} );
+        REQUIRE( !result ) ;
+        REQUIRE_THAT( result.errorMessage(), Contains( "Expected a boolean value" ) );
+
+        result = p.parse( {"TestApp", "-f"} );
+        REQUIRE( !result ) ;
+        REQUIRE_THAT( result.errorMessage(), Contains( "Expected argument following -f" ) );
     }
 }
 
