@@ -12,6 +12,19 @@ readmePath = os.path.join( rootPath, "README.md" )
 versionParser = re.compile( r'\s*\/\/\s*Clara\s+v([0-9]+)\.([0-9]+)(\.([0-9]+)(\-(.*)\.([0-9]*))?)?' )
 readmeParser = re.compile( r'\s*#\s*Clara\s+v(.*)' )
 
+warnings = 0
+
+def precheck():
+    global warnings
+    f = open( claraPath, 'r' )
+    lineNo = 0
+    for line in f:
+        lineNo = lineNo+1
+        if "dynamic" in line:
+            warnings = warnings + 1
+            print( "** Warning: use of dynamic_cast on line {0}!".format(lineNo) )
+    f.close()
+
 class Version:
     def __init__(self):
         f = open( claraPath, 'r' )
@@ -100,18 +113,27 @@ class Version:
         else:
             print( "*** Did not update README" )
 def usage():
-    print( "\n**** Run with patch|minor|major|dev\n" )
+    print( "\n**** Run with patch|minor|major|dev|verify\n" )
     return 1
 
 if len( sys.argv) == 1:
     exit( usage() )
+
+precheck()
 
 v = Version()
 oldV = v.getVersionString()
 
 cmd = sys.argv[1].lower()
 
-if cmd == "patch":
+if warnings > 0:
+    print( "Found {0} issue(s)".format(warnings))
+    exit(1)
+
+if cmd == "verify":
+    print( "No issues found")
+    exit(0)
+elif cmd == "patch":
     v.incrementPatchNumber()
 elif cmd == "minor":
     v.incrementMinorVersion()
