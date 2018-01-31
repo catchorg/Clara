@@ -24,6 +24,17 @@ struct StringMaker<clara::detail::InternalParseResult> {
 };
 }
 
+std::string toString( Opt const& opt ) {
+    std::ostringstream oss;
+    oss << (Parser() | opt);
+    return oss.str();
+}
+std::string toString( Parser const& p ) {
+    std::ostringstream oss;
+    oss << p;
+    return oss.str();
+}
+
 // !TBD
 // for Catch:
 // error on unrecognised?
@@ -104,10 +115,7 @@ TEST_CASE( "Combined parser" ) {
                 ( "which test or tests to use" );
 
     SECTION( "usage" ) {
-        std::ostringstream oss;
-        oss << parser;
-        auto usage = oss.str();
-        REQUIRE(usage ==
+        REQUIRE(toString(parser) ==
                     "usage:\n"
                     "  <executable> [<test name|tags|pattern> ... ] options\n"
                     "\n"
@@ -404,12 +412,6 @@ TEST_CASE( "Unrecognised opts" ) {
     CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
 
-std::string toString( Opt const& opt ) {
-    std::ostringstream oss;
-    oss << (Parser() | opt);
-    return oss.str();
-}
-
 TEST_CASE( "different widths" ) {
 
     std::string s;
@@ -453,16 +455,49 @@ TEST_CASE( "different widths" ) {
 
 TEST_CASE( "newlines in description" ) {
 
-    int i;
-    auto opt = Opt( i, "i" )["-i"]("This string should be long enough to force a wrap in the first instance. But what we really want to test is where if we put an explicit newline in the string, say, here\nthat it is formatted correctly");
+    SECTION( "single, long description" ) {
+        int i;
+        auto opt = Opt(i, "i")["-i"](
+                "This string should be long enough to force a wrap in the first instance. But what we really want to test is where if we put an explicit newline in the string, say, here\nthat it is formatted correctly");
 
-    REQUIRE( toString( opt ) ==
-         "usage:\n"
-         "  <executable>  options\n"
-        "\n"
-         "where options are:\n"
-         "  -i <i>    This string should be long enough to force a wrap in the first\n"
-         "            instance. But what we really want to test is where if we put an\n"
-         "            explicit newline in the string, say, here\n"
-         "            that it is formatted correctly\n" );
+        REQUIRE(toString(opt) ==
+                "usage:\n"
+                        "  <executable>  options\n"
+                        "\n"
+                        "where options are:\n"
+                        "  -i <i>    This string should be long enough to force a wrap in the first\n"
+                        "            instance. But what we really want to test is where if we put an\n"
+                        "            explicit newline in the string, say, here\n"
+                        "            that it is formatted correctly\n");
+    }
+    SECTION( "multiple entries" ) {
+        int a,b,c;
+        auto p
+            = Opt(a, "a")
+                ["-a"]["--longishOption"]
+                ("A description with:\nA new line right in the middle")
+            | Opt(b, "b")
+                ["-b"]["--bb"]
+                ("This description also has\nA new line")
+              | Opt(c, "c")
+                ["-c"]["--cc"]
+                ("Another\nnewline. In fact this one has line-wraps, as well as mutiple\nnewlines");
+
+        REQUIRE(toString(p) ==
+                "usage:\n"
+                        "  <executable>  options\n"
+                        "\n"
+                        "where options are:\n"
+                        "  -a, --longishOption <a>    A description with:\n"
+                        "                             A new line right in the middle\n"
+                        "  -b, --bb <b>               This description also has\n"
+                        "                             A new line\n"
+                        "  -c, --cc <c>               Another\n"
+                        "                             newline. In fact this one has line-wraps, as\n"
+                        "                             well as mutiple\n"
+                        "                             newlines\n" );
+
+
+
+    }
 }
