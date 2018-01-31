@@ -450,3 +450,19 @@ TEST_CASE( "different widths" ) {
     SECTION( "long everything" )
         REQUIRE_NOTHROW( toString( longEverything ) == "?" );
 }
+
+TEST_CASE( "newlines in description" ) {
+
+    int i;
+    auto opt = Opt( i, "i" )["-i"]("This string should be long enough to force a wrap in the first instance. But what we really want to test is where if we put an explicit newline in the string, say, here\nthat it is formatted correctly");
+
+    REQUIRE( toString( opt ) ==
+         "usage:\n"
+         "  <executable>  options\n"
+        "\n"
+         "where options are:\n"
+         "  -i <i>    This string should be long enough to force a wrap in the first\n"
+         "            instance. But what we really want to test is where if we put an\n"
+         "            explicit newline in the string, say, here\n"
+         "            that it is formatted correctly\n" );
+}
