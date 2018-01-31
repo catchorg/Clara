@@ -481,7 +481,7 @@ TEST_CASE( "newlines in description" ) {
                 ("This description also has\nA new line")
               | Opt(c, "c")
                 ["-c"]["--cc"]
-                ("Another\nnewline. In fact this one has line-wraps, as well as mutiple\nnewlines");
+                ("Another\nnewline. In fact this one has line-wraps, as well as mutiple\nnewlines and\n\n- leading hyphens");
 
         REQUIRE(toString(p) ==
                 "usage:\n"
@@ -495,7 +495,9 @@ TEST_CASE( "newlines in description" ) {
                         "  -c, --cc <c>               Another\n"
                         "                             newline. In fact this one has line-wraps, as\n"
                         "                             well as mutiple\n"
-                        "                             newlines\n" );
+                        "                             newlines and\n"
+                        "                             \n"
+                        "                             - leading hyphens\n");
 
 
 
