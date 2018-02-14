@@ -379,6 +379,20 @@ TEST_CASE( "Invalid parsers" )
         CHECK( !result );
         CHECK( result.errorMessage() == "No options supplied to Opt" );
     }
+    SECTION( "no option name" )
+    {
+        auto cli = Opt( config.number, "number" )[""];
+        auto result = cli.parse( { "TestApp", "-o", "filename" } );
+        CHECK( !result );
+        CHECK( result.errorMessage() == "Option name cannot be empty" );
+    }
+    SECTION( "invalid option name" )
+    {
+        auto cli = Opt( config.number, "number" )["invalid"];
+        auto result = cli.parse( { "TestApp", "-o", "filename" } );
+        CHECK( !result );
+        CHECK( result.errorMessage() == "Option name must begin with '-'" );
+    }
 }
 
 TEST_CASE( "Multiple flags" ) {

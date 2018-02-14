@@ -17,6 +17,8 @@
 #ifndef CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
 #define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH CLARA_CONFIG_CONSOLE_WIDTH
 #endif
+
+
 #include "clara_textflow.hpp"
 
 #include <vector>
@@ -249,15 +251,13 @@ namespace detail {
 
     protected:
         void enforceOk() const override {
-            // !TBD: If no exceptions, std::terminate here or something
-            switch( m_type ) {
-                case ResultBase::LogicError:
-                    throw std::logic_error( m_errorMessage );
-                case ResultBase::RuntimeError:
-                    throw std::runtime_error( m_errorMessage );
-                case ResultBase::Ok:
-                    break;
-            }
+
+            // Errors shouldn't reach this point, but if they do
+            // the actual error message will be in m_errorMessage
+            assert( m_type != ResultBase::LogicError );
+            assert( m_type != ResultBase::RuntimeError );
+            if( m_type != ResultBase::Ok )
+                std::abort();
         }
 
         std::string m_errorMessage; // Only populated if resultType is an error
