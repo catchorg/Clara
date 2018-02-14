@@ -58,7 +58,7 @@ namespace detail {
         std::vector<std::string> m_args;
 
     public:
-        Args( int argc, char *argv[] ) {
+        Args( int argc, const char *argv[] ) {
             m_exeName = argv[0];
             for( int i = 1; i < argc; ++i )
                 m_args.push_back( argv[i] );
