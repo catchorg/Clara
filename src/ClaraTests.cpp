@@ -412,6 +412,27 @@ TEST_CASE( "Unrecognised opts" ) {
     CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
 
+TEST_CASE( "char* args" ) {
+
+    std::string value;
+    Parser cli = Parser() | Arg( value, "value" );
+
+    SECTION( "char*" ) {
+        char* args[] = { (char*)"TestApp", (char*)"hello" };
+
+        auto result = cli.parse( Args( 2, args ) );
+        REQUIRE( result );
+        REQUIRE( value == "hello" );
+    }
+    SECTION( "char*" ) {
+        const char* args[] = { "TestApp", "hello" };
+
+        auto result = cli.parse( Args( 2, args ) );
+        REQUIRE( result );
+        REQUIRE( value == "hello" );
+    }
+}
+
 TEST_CASE( "different widths" ) {
 
     std::string s;
