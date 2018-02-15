@@ -18,6 +18,13 @@
 #define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH CLARA_CONFIG_CONSOLE_WIDTH
 #endif
 
+#ifndef CLARA_CONFIG_OPTIONAL_TYPE
+#   ifdef __has_include
+#       if __has_include(<optional>) && __cplusplus >= 201703L
+#           define CLARA_CONFIG_OPTIONAL_TYPE std::optional
+#       endif
+#   endif
+#endif
 
 #include "clara_textflow.hpp"
 
@@ -327,6 +334,16 @@ namespace detail {
             return ParserResult::runtimeError( "Expected a boolean value but did not recognise: '" + source + "'" );
         return ParserResult::ok( ParseResultType::Matched );
     }
+#ifdef CLARA_CONFIG_OPTIONAL_TYPE
+    template<typename T>
+    inline auto convertInto( std::string const &source, std::optional<T>& target ) -> ParserResult {
+        T temp;
+        auto result = convertInto( source, temp );
+        if( result )
+            target = temp;
+        return result;
+    }
+#endif // CLARA_CONFIG_OPTIONAL_TYPE
 
     struct NonCopyable {
         NonCopyable() = default;
