@@ -370,6 +370,8 @@ TEST_CASE( "usage", "[.]" ) {
 
 TEST_CASE( "Invalid parsers" )
 {
+    using namespace Catch::Matchers;
+
     TestOpt config;
 
     SECTION( "no options" )
@@ -391,7 +393,7 @@ TEST_CASE( "Invalid parsers" )
         auto cli = Opt( config.number, "number" )["invalid"];
         auto result = cli.parse( { "TestApp", "-o", "filename" } );
         CHECK( !result );
-        CHECK( result.errorMessage() == "Option name must begin with '-'" );
+        CHECK_THAT( result.errorMessage(), StartsWith( "Option name must begin with '-'" ) );
     }
 }
 
