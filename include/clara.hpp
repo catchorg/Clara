@@ -334,7 +334,7 @@ namespace detail {
     }
 #ifdef CLARA_CONFIG_OPTIONAL_TYPE
     template<typename T>
-    inline auto convertInto( std::string const &source, std::optional<T>& target ) -> ParserResult {
+    inline auto convertInto( std::string const &source, CLARA_CONFIG_OPTIONAL_TYPE<T>& target ) -> ParserResult {
         T temp;
         auto result = convertInto( source, temp );
         if( result )
