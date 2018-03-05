@@ -370,7 +370,7 @@ namespace detail {
     template<typename ClassT, typename ReturnT, typename ArgT>
     struct UnaryLambdaTraits<ReturnT( ClassT::* )( ArgT ) const> {
         static const bool isValid = true;
-        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;;
+        using ArgType = typename std::remove_const<typename std::remove_reference<ArgT>::type>::type;
         using ReturnType = ReturnT;
     };
 
@@ -488,6 +488,20 @@ namespace detail {
             }
             return *this;
         }
+
+        void fetchArgument() {
+            if( m_tokenBuffer.size() >= 2 ) {
+                m_tokenBuffer.erase( m_tokenBuffer.begin() );
+            } else {
+                if( it != itEnd )
+                    ++it;
+
+                m_tokenBuffer.resize( 0 );
+
+                if( it != itEnd )
+                    m_tokenBuffer.push_back( { TokenType::Argument, *it } );
+           }
+        }
     };
 
 
@@ -535,7 +549,7 @@ namespace detail {
             return *this;
         }
 
-        ~ResultValueBase() {
+        ~ResultValueBase() override {
             if( m_type == Ok )
                 m_value.~T();
         }
@@ -573,7 +587,7 @@ namespace detail {
         auto errorMessage() const -> std::string { return m_errorMessage; }
 
     protected:
-        virtual void enforceOk() const {
+        void enforceOk() const override {
             // !TBD: If no exceptions, std::terminate here or something
             switch( m_type ) {
                 case ResultBase::LogicError:
@@ -994,7 +1008,7 @@ namespace detail {
                         if( result.value() == ParseResultType::ShortCircuitAll )
                             return InternalParseResult::ok( ParseState( result.value(), remainingTokens ) );
                     } else {
-                        ++remainingTokens;
+                        remainingTokens.fetchArgument();
                         if( !remainingTokens )
                             return InternalParseResult::runtimeError( "Expected argument following " + token.token );
                         auto const &argToken = *remainingTokens;
@@ -1115,6 +1129,8 @@ namespace detail {
             size_t optWidth = 0;
             for( auto const &cols : rows )
                 optWidth = (std::max)(optWidth, cols.left.size() + 2);
+
+            optWidth = (std::min)(optWidth, consoleWidth/2);
 
             for( auto const &cols : rows ) {
                 auto row =

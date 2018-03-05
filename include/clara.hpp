@@ -157,6 +157,20 @@ namespace detail {
             }
             return *this;
         }
+
+        void fetchArgument() {
+            if( m_tokenBuffer.size() >= 2 ) {
+                m_tokenBuffer.erase( m_tokenBuffer.begin() );
+            } else {
+                if( it != itEnd )
+                    ++it;
+
+                m_tokenBuffer.resize( 0 );
+
+                if( it != itEnd )
+                    m_tokenBuffer.push_back( { TokenType::Argument, *it } );
+           }
+        }
     };
 
 
@@ -663,7 +677,7 @@ namespace detail {
                         if( result.value() == ParseResultType::ShortCircuitAll )
                             return InternalParseResult::ok( ParseState( result.value(), remainingTokens ) );
                     } else {
-                        ++remainingTokens;
+                        remainingTokens.fetchArgument();
                         if( !remainingTokens )
                             return InternalParseResult::runtimeError( "Expected argument following " + token.token );
                         auto const &argToken = *remainingTokens;

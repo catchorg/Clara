@@ -330,6 +330,20 @@ std::string toString( Opt const& opt ) {
     return oss.str();
 }
 
+TEST_CASE( "Opt value can start with a dash" ) {
+    std::string name;
+    bool showHelp = false;
+    auto parser
+            = Help( showHelp )
+            | Opt( name, "name" )
+                ["-n"]["--name"]
+                ( "the name to use" );
+
+    auto result = parser.parse( Args{ "TestApp", "-n", "-foobar" } );
+    CHECK( result );
+    REQUIRE( name == "-foobar" );
+}
+
 TEST_CASE( "different widths" ) {
 
     std::string s;
