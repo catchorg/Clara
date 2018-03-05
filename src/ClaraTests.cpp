@@ -339,9 +339,16 @@ TEST_CASE( "Opt value can start with a dash" ) {
                 ["-n"]["--name"]
                 ( "the name to use" );
 
-    auto result = parser.parse( Args{ "TestApp", "-n", "-foobar" } );
-    CHECK( result );
-    REQUIRE( name == "-foobar" );
+    SECTION( "args" ) {
+      auto result = parser.parse( Args{ "TestApp", "-n", "-foo" } );
+      CHECK( result );
+      REQUIRE( name == "-foo" );
+    }
+    SECTION( "arg separated by =" ) {
+      auto result = parser.parse( Args{ "TestApp", "-n=-bar" } );
+      CHECK( result );
+      REQUIRE( name == "-bar" );
+    }
 }
 
 TEST_CASE( "different widths" ) {
