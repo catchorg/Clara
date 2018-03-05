@@ -349,6 +349,11 @@ TEST_CASE( "Opt value can start with a dash" ) {
       CHECK( result );
       REQUIRE( name == "-bar" );
     }
+    SECTION( "empty args" ) {
+      auto result = parser.parse( Args{ "TestApp", "-n", "" } );
+      CHECK( result );
+      REQUIRE( name == "" );
+    }
 }
 
 TEST_CASE( "different widths" ) {
