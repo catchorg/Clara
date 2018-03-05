@@ -338,7 +338,7 @@ namespace detail {
         T temp;
         auto result = convertInto( source, temp );
         if( result )
-            target = temp;
+            target = std::move(temp);
         return result;
     }
 #endif // CLARA_CONFIG_OPTIONAL_TYPE
