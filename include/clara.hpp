@@ -102,7 +102,7 @@ namespace detail {
 
             if( it != itEnd ) {
                 auto const &next = *it;
-                if( isOptPrefix( next[0] ) ) {
+                if( isOptPrefix( next[0] ) && next.size() > 1 ) {
                     auto delimiterPos = next.find_first_of( " :=" );
                     if( delimiterPos != std::string::npos ) {
                         m_tokenBuffer.push_back( { TokenType::Option, next.substr( 0, delimiterPos ) } );
