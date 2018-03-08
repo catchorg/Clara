@@ -21,6 +21,7 @@
 #ifndef CLARA_CONFIG_OPTIONAL_TYPE
 #   ifdef __has_include
 #       if __has_include(<optional>) && __cplusplus >= 201703L
+#           include <optional>
 #           define CLARA_CONFIG_OPTIONAL_TYPE std::optional
 #       endif
 #   endif

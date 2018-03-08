@@ -260,7 +260,7 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE(config.flag == false);
         }
-        
+
         SECTION( "arg before flag" )
         {
             auto result = cli.parse({ "TestApp", "-f", "something" });
@@ -540,3 +540,23 @@ TEST_CASE( "newlines in description" ) {
 
     }
 }
+
+#if defined(CLARA_CONFIG_OPTIONAL_TYPE)
+TEST_CASE("Reading into std::optional") {
+    CLARA_CONFIG_OPTIONAL_TYPE<std::string> name;
+    auto p = Opt(name, "name")
+        ["-n"]["--name"]
+        ("the name to use");
+    SECTION("Not set") {
+        auto result = p.parse(Args{ "TestApp", "-q", "Pixie" });
+        REQUIRE( result );
+        REQUIRE_FALSE( name.has_value() );
+    }
+    SECTION("Provided") {
+        auto result = p.parse(Args{ "TestApp", "-n", "Pixie" });
+        REQUIRE( result );
+        REQUIRE( name.has_value() );
+        REQUIRE( name.value() == "Pixie" );
+    }
+}
+#endif // CLARA_CONFIG_OPTIONAL_TYPE
