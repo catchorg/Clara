@@ -109,6 +109,11 @@ matrix:
           sources: *all_sources
           packages: ['valgrind', 'lcov', 'g++-7']
       env: COMPILER='g++-7' VALGRIND=1
+      
+    - os: linux
+      compiler: gcc
+      addons: *gcc7
+      env: COMPILER='g++-7' CPP17=1
 
     # 5/ OSX Clang Builds
     - os: osx
@@ -134,7 +139,7 @@ matrix:
     - os: osx
       osx_image: xcode9.1
       compiler: clang
-      env: COMPILER='clang++' USE_CPP14=1
+      env: COMPILER='clang++' CPP14=1
 
 
 install:
@@ -154,7 +159,7 @@ before_script:
   - cd ${TRAVIS_BUILD_DIR}
   - |
     # Use Debug builds for collecting coverage
-    cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON
+    cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DUSE_CPP14=${CPP14} -DUSE_CPP17=${CPP17}
     # Don't bother with release build for coverage build
     cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release
 
