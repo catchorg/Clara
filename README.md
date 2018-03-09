@@ -1,4 +1,4 @@
-# Clara v1.1.3
+# Clara v1.1.4
 [![Build Status](https://travis-ci.org/catchorg/Clara.svg?branch=master)](https://travis-ci.org/catchorg/Clara)
 [![Build status](https://ci.appveyor.com/api/projects/status/github/catchorg/Clara?brach=master&svg=true)](https://ci.appveyor.com/project/catchorg/clara)
 [![codecov](https://codecov.io/gh/catchorg/Clara/branch/master/graph/badge.svg)](https://codecov.io/gh/catchorg/Clara)

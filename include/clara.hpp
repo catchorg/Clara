@@ -5,7 +5,7 @@
 //
 // See https://github.com/philsquared/Clara for more details
 
-// Clara v1.1.3
+// Clara v1.1.4
 
 #ifndef CLARA_HPP_INCLUDED
 #define CLARA_HPP_INCLUDED
