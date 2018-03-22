@@ -22,7 +22,7 @@ init:
   - git config --global core.autocrlf input
 
 install:
-  - ps: if (($env:CONFIGURATION) -eq "Debug" ) { python -m pip install codecov }
+  - ps: if (($env:CONFIGURATION) -eq "Debug" ) { python -m pip --disable-pip-version-check install codecov }
   - ps: if (($env:CONFIGURATION) -eq "Debug" ) { .\misc\installOpenCppCoverage.ps1 }
 
 # Win32 and x64 are CMake-compatible solution platform names.
