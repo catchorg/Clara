@@ -92,20 +92,14 @@ namespace detail {
         std::string token;
     };
 
-    inline auto isOptPrefix( char c ) -> bool {
-        return c == '-'
-#ifdef CLARA_PLATFORM_WINDOWS
-            || c == '/'
-#endif
-        ;
-    }
-
     // Abstracts iterators into args as a stream of tokens, with option arguments uniformly handled
     class TokenStream {
         using Iterator = std::vector<std::string>::const_iterator;
         Iterator it;
         Iterator itEnd;
         std::vector<Token> m_tokenBuffer;
+        std::string delimiters;
+        std::string optionPrefix;
 
         void loadBuffer() {
             m_tokenBuffer.resize( 0 );
@@ -117,13 +111,15 @@ namespace detail {
             if( it != itEnd ) {
                 auto const &next = *it;
                 if( isOptPrefix( next[0] ) ) {
-                    auto delimiterPos = next.find_first_of( " :=" );
+                    auto delimiterPos = next.find_first_of( delimiters );
                     if( delimiterPos != std::string::npos ) {
                         m_tokenBuffer.push_back( { TokenType::Option, next.substr( 0, delimiterPos ) } );
                         m_tokenBuffer.push_back( { TokenType::Argument, next.substr( delimiterPos + 1 ) } );
                     } else {
-                        if( next[1] != '-' && next.size() > 2 ) {
-                            std::string opt = "- ";
+                        if( !isOptPrefix(next[1]) && next.size() > 2 ) {
+                            std::string opt;
+                            opt += optionPrefix[0];
+                            opt += " ";
                             for( size_t i = 1; i < next.size(); ++i ) {
                                 opt[1] = next[i];
                                 m_tokenBuffer.push_back( { TokenType::Option, opt } );
@@ -138,10 +134,15 @@ namespace detail {
             }
         }
 
-    public:
-        explicit TokenStream( Args const &args ) : TokenStream( args.m_args.begin(), args.m_args.end() ) {}
+        inline auto isOptPrefix( char c ) -> bool {
+            auto r = optionPrefix.find( c ) != std::string::npos;
+            return r;
+        }
 
-        TokenStream( Iterator it, Iterator itEnd ) : it( it ), itEnd( itEnd ) {
+    public:
+        explicit TokenStream( Args const &args, std::string const &dels, std::string const &opt_prefix ) : TokenStream( args.m_args.begin(), args.m_args.end(), dels, opt_prefix ) {}
+
+        TokenStream( Iterator it, Iterator itEnd, std::string const &dels, std::string const &opt_prefix ) : it( it ), itEnd( itEnd ), delimiters(dels), optionPrefix(opt_prefix) {
             loadBuffer();
         }
 
@@ -463,15 +464,32 @@ namespace detail {
 
     struct Parser;
 
+    struct ParserCustomization {
+        virtual auto token_delimiters() const -> std::string = 0;
+        virtual auto option_prefix() const -> std::string = 0;
+    };
+
+    struct DefaultParserCustomization : ParserCustomization {
+        auto token_delimiters() const -> std::string override { return " :="; }
+        auto option_prefix() const -> std::string override
+        {
+#ifdef CLARA_PLATFORM_WINDOWS
+            return "-/";
+#else
+            return "-";
+#endif
+        }
+    };
+
     class ParserBase {
     public:
         virtual ~ParserBase() = default;
         virtual auto validate() const -> Result { return Result::ok(); }
-        virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
+        virtual auto parse( std::string const& exeName, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult  = 0;
         virtual auto cardinality() const -> size_t { return 1; }
 
-        auto parse( Args const &args ) const -> InternalParseResult {
-            return parse( args.exeName(), TokenStream( args ) );
+        auto parse( Args const &args, ParserCustomization const &customize = DefaultParserCustomization() ) const -> InternalParseResult {
+            return parse( args.exeName(), TokenStream( args, customize.token_delimiters(), customize.option_prefix() ), customize );
         }
     };
 
@@ -560,7 +578,7 @@ namespace detail {
         }
 
         // The exe name is not parsed out of the normal tokens, but is handled specially
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto parse( std::string const&, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
         }
 
@@ -584,7 +602,7 @@ namespace detail {
     public:
         using ParserRefImpl::ParserRefImpl;
 
-        auto parse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto parse( std::string const &, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
             auto validationResult = validate();
             if( !validationResult )
                 return InternalParseResult( validationResult );
@@ -604,15 +622,6 @@ namespace detail {
                 return InternalParseResult::ok( ParseState( ParseResultType::Matched, ++remainingTokens ) );
         }
     };
-
-    inline auto normaliseOpt( std::string const &optName ) -> std::string {
-#ifdef CLARA_PLATFORM_WINDOWS
-        if( optName[0] == '/' )
-            return "-" + optName.substr( 1 );
-        else
-#endif
-            return optName;
-    }
 
     class Opt : public ParserRefImpl<Opt> {
     protected:
@@ -650,18 +659,25 @@ namespace detail {
             return { { oss.str(), m_description } };
         }
 
-        auto isMatch( std::string const &optToken ) const -> bool {
-            auto normalisedToken = normaliseOpt( optToken );
+        auto isMatch( std::string const &optToken, ParserCustomization const &customize ) const -> bool {
+            auto normalisedToken = normaliseOpt( optToken, customize );
             for( auto const &name : m_optNames ) {
-                if( normaliseOpt( name ) == normalisedToken )
+                if( normaliseOpt( name, customize ) == normalisedToken )
                     return true;
             }
             return false;
         }
 
+        auto normaliseOpt( std::string const &optName, ParserCustomization const &customize ) const -> std::string {
+            if( customize.option_prefix().find( optName[0] ) != std::string::npos && customize.option_prefix().find( optName[1] ) == std::string::npos)
+                return "--" + optName.substr( 1 );
+            else
+                return "--" + optName.substr( 2 );
+        }
+
         using ParserBase::parse;
 
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto parse( std::string const&, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
             auto validationResult = validate();
             if( !validationResult )
                 return InternalParseResult( validationResult );
@@ -669,7 +685,7 @@ namespace detail {
             auto remainingTokens = tokens;
             if( remainingTokens && remainingTokens->type == TokenType::Option ) {
                 auto const &token = *remainingTokens;
-                if( isMatch(token.token ) ) {
+                if( isMatch( token.token, customize ) ) {
                     if( m_ref->isFlag() ) {
                         auto flagRef = static_cast<detail::BoundFlagRefBase*>( m_ref.get() );
                         auto result = flagRef->setFlag( true );
@@ -839,7 +855,7 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto parse( std::string const& exeName, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
 
             struct ParserInfo {
                 ParserBase const* parser = nullptr;
@@ -865,7 +881,7 @@ namespace detail {
                 for( size_t i = 0; i < totalParsers; ++i ) {
                     auto&  parseInfo = parseInfos[i];
                     if( parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality() ) {
-                        result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
+                        result = parseInfo.parser->parse(exeName, result.value().remainingTokens(), customize);
                         if (!result)
                             return result;
                         if (result.value().type() != ParseResultType::NoMatch) {
@@ -917,6 +933,9 @@ using detail::ParseResultType;
 
 // Result type for parser operation
 using detail::ParserResult;
+
+// Customization of parsing
+using detail::ParserCustomization;
 
 
 } // namespace clara
