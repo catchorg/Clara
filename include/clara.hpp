@@ -578,7 +578,7 @@ namespace detail {
         }
 
         // The exe name is not parsed out of the normal tokens, but is handled specially
-        auto parse( std::string const&, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
+        auto parse( std::string const&, TokenStream const &tokens, ParserCustomization const & ) const -> InternalParseResult override {
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
         }
 
@@ -602,7 +602,7 @@ namespace detail {
     public:
         using ParserRefImpl::ParserRefImpl;
 
-        auto parse( std::string const &, TokenStream const &tokens, ParserCustomization const &customize ) const -> InternalParseResult override {
+        auto parse( std::string const &, TokenStream const &tokens, ParserCustomization const & ) const -> InternalParseResult override {
             auto validationResult = validate();
             if( !validationResult )
                 return InternalParseResult( validationResult );
