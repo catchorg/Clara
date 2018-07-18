@@ -669,10 +669,15 @@ namespace detail {
         }
 
         auto normaliseOpt( std::string const &optName, ParserCustomization const &customize ) const -> std::string {
-            if( customize.option_prefix().find( optName[0] ) != std::string::npos && customize.option_prefix().find( optName[1] ) == std::string::npos)
-                return "--" + optName.substr( 1 );
-            else
-                return "--" + optName.substr( 2 );
+            auto is_prefix_char_0 = customize.option_prefix().find( optName[0] ) != std::string::npos;
+            auto is_prefix_char_1 = customize.option_prefix().find( optName[1] ) != std::string::npos;
+            if( is_prefix_char_0 ) {
+                if ( is_prefix_char_1 )
+                    return "--" + optName.substr( 2 );
+                else
+                    return "-" + optName.substr( 1 );
+            } else
+                return optName;
         }
 
         using ParserBase::parse;
