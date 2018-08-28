@@ -481,7 +481,7 @@ namespace detail {
         template<typename T>
         auto operator|( T const &other ) const -> Parser;
 
-		template<typename T>
+        template<typename T>
         auto operator+( T const &other ) const -> Parser;
     };
 
