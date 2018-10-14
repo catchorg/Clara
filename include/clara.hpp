@@ -388,7 +388,7 @@ namespace detail {
             T temp;
             auto result = convertInto( arg, temp );
             if( result )
-                m_ref.push_back( temp );
+                m_ref.emplace_back( temp );
             return result;
         }
     };
