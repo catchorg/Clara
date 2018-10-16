@@ -110,6 +110,12 @@ namespace clara { namespace TextFlow {
             }
 
         public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = std::string;
+            using pointer = value_type*;
+            using reference = value_type&;
+            using iterator_category = std::forward_iterator_tag;
+
             explicit iterator( Column const& column ) : m_column( column ) {
                 assert( m_column.m_width > m_column.m_indent );
                 assert( m_column.m_initialIndent == std::string::npos || m_column.m_width > m_column.m_initialIndent );
@@ -234,6 +240,12 @@ namespace clara { namespace TextFlow {
             }
 
         public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = std::string;
+            using pointer = value_type*;
+            using reference = value_type&;
+            using iterator_category = std::forward_iterator_tag;
+
             explicit iterator( Columns const& columns )
             :   m_columns( columns.m_columns ),
                 m_activeIterators( m_columns.size() )
