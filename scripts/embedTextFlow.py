@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Execute this script any time you import a new copy of textflow into the third_party area
 import os
 import sys
