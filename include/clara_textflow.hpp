@@ -16,7 +16,7 @@
 #include <vector>
 
 #ifndef CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
-#define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH
+#define CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH 80
 #endif
 
 
@@ -39,7 +39,7 @@ namespace clara { namespace TextFlow {
 
     class Column {
         std::vector<std::string> m_strings;
-        size_t m_width = TEXTFLOW_CONFIG_CONSOLE_WIDTH;
+        size_t m_width = CLARA_TEXTFLOW_CONFIG_CONSOLE_WIDTH;
         size_t m_indent = 0;
         size_t m_initialIndent = std::string::npos;
 
@@ -332,6 +332,6 @@ namespace clara { namespace TextFlow {
         cols += other;
         return cols;
     }
-}
+}}
 
 #endif // CLARA_TEXTFLOW_HPP_INCLUDED
