@@ -154,7 +154,6 @@ struct TestOpt {
     bool flag = false;
     std::string firstPos;
     std::string secondPos;
-    std::vector<std::string> unpositional;
 
     auto makeCli() -> Parser {
         return ExeName( processName )
