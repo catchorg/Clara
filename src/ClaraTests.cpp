@@ -305,6 +305,23 @@ TEST_CASE( "cmdline" ) {
     }
 }
 
+TEST_CASE( "bound lambdas " ) {
+    int someValue = 0;
+
+    SECTION( "binding lambda by lvalue" ) {
+        auto optionLambda = [&someValue]( int value ){ someValue = value; };
+
+        auto parser = Opt( optionLambda, "value" )
+            ["-v"];
+
+        const auto result = parser.parse( Args{ "TestApp", "-v", "42" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+
+        CHECK( someValue == 42 );
+    }
+}
+
 TEST_CASE( "flag parser" ) {
 
     bool flag = false;

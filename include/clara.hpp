@@ -35,6 +35,7 @@
 #include <cassert>
 #include <set>
 #include <algorithm>
+#include <type_traits>
 
 #if !defined(CLARA_PLATFORM_WINDOWS) && ( defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) )
 #define CLARA_PLATFORM_WINDOWS
@@ -42,6 +43,17 @@
 
 namespace clara {
 namespace detail {
+
+    template<typename...>
+    using void_t = void;
+
+    // Trait to determine if a type has a call operator
+    template<typename T, typename = void>
+    struct HasCallOperator : std::false_type {};
+
+    template<typename T>
+    struct HasCallOperator<T, void_t<decltype( &T::operator() )>> : std::true_type {};
+
 
     // Traits for extracting arg and return type of lambdas (for single argument lambdas)
     template<typename L>
@@ -497,13 +509,13 @@ namespace detail {
         explicit ParserRefImpl( std::shared_ptr<BoundRef> const &ref ) : m_ref( ref ) {}
 
     public:
-        template<typename T>
+        template<typename T, typename std::enable_if<!HasCallOperator<T>::value>::type* = nullptr>
         ParserRefImpl( T &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundValueRef<T>>( ref ) ),
             m_hint( hint )
         {}
 
-        template<typename LambdaT>
+        template<typename LambdaT, typename std::enable_if<HasCallOperator<LambdaT>::value>::type* = nullptr>
         ParserRefImpl( LambdaT const &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundLambda<LambdaT>>( ref ) ),
             m_hint(hint)
