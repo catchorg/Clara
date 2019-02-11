@@ -66,7 +66,10 @@ that can be converted from a string using `std::ostream`.
 
 `Arg`s specify arguments that are not tied to options, and so have no square bracket names. They otherwise work just like `Opt`s.
 
-A, console optimised, usage string can be obtained by inserting the parser into a stream.
+A, console optimised, usage string can be obtained by inserting the parser into an output stream like this:
+```
+std::cout << cli << std::endl;
+```
 The usage string is built from the information supplied and is formatted for the console width.
 
 As a convenience, the standard help options (`-h`, `--help` and `-?`) can be specified using the `Help` parser,
