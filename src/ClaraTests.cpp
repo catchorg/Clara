@@ -128,7 +128,7 @@ TEST_CASE( "Combined parser" ) {
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2", "-r", "42" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
@@ -394,6 +394,26 @@ TEST_CASE( "Invalid parsers" )
         auto result = cli.parse( { "TestApp", "-o", "filename" } );
         CHECK( !result );
         CHECK_THAT( result.errorMessage(), StartsWith( "Option name must begin with '-'" ) );
+    }
+    SECTION( "no required option 1" ) {
+        bool showHelp = false;
+        auto cli = Help( showHelp ) | Opt( config.number, "number" )["-n"]["--number"].required();
+        auto result = cli.parse( { "TestApp" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), StartsWith("The required option") );
+    }
+    SECTION( "no required option 2" ) {
+        auto cli = Opt( config.number, "number" )["-n"]["--number"].required();
+        auto result = cli.parse( { "TestApp" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), StartsWith("The required option") );
+    }
+    SECTION( "no required option 3" ) {
+        auto rseed = -1;
+        auto cli = Opt( config.number, "number" )["-n"]["--number"].required() | Opt( rseed, "rseed" )["-r"]["--rseed"].required();
+        auto result = cli.parse( { "TestApp", "-n", "999"} );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), StartsWith("The required option") );
     }
 }
 
