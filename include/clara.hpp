@@ -730,6 +730,19 @@ namespace detail {
         }
     };
 
+    struct Version : Opt {
+        Version( bool &showVersionFlag )
+        :   Opt([&]( bool flag ) {
+                showVersionFlag = flag;
+                return ParserResult::ok( ParseResultType::ShortCircuitAll );
+            })
+        {
+            static_cast<Opt &>( *this )
+                    ("display version")
+                    ["-v"]["--version"]
+                    .optional();
+        }
+    };
 
     struct Parser : ParserBase {
 
@@ -912,6 +925,9 @@ using detail::ExeName;
 
 // Convenience wrapper for option parser that specifies the help option
 using detail::Help;
+
+// Convenience wrapper for option parser that specifies the version option
+using detail::Version;
 
 // enum of result types from a parse
 using detail::ParseResultType;
