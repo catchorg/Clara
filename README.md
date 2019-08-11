@@ -3,6 +3,11 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/github/catchorg/Clara?brach=master&svg=true)](https://ci.appveyor.com/project/catchorg/clara)
 [![codecov](https://codecov.io/gh/catchorg/Clara/branch/master/graph/badge.svg)](https://codecov.io/gh/catchorg/Clara)
 
+# !! This repository is unmaintained. Go [here](https://github.com/bfgroup/Lyra) for a fork that is somewhat maintained. !!
+
+-----------------------------
+
+
 A simple to use, composable, command line parser for C++ 11 and beyond.
 
 Clara is a single-header library.
