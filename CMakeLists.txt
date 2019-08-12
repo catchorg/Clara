@@ -21,7 +21,7 @@ set_property(TARGET ClaraTests PROPERTY CXX_EXTENSIONS OFF)
 
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
-    target_compile_options( ClaraTests PRIVATE -Wall -Wextra -pedantic -Werror )
+    target_compile_options( ClaraTests PRIVATE -Wall -Wextra -pedantic -Werror -Wsign-conversion -Wshadow)
 endif()
 if( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
 	target_compile_options( ClaraTests PRIVATE /W4 /WX )

@@ -142,7 +142,7 @@ namespace detail {
     public:
         explicit TokenStream( Args const &args ) : TokenStream( args.m_args.begin(), args.m_args.end() ) {}
 
-        TokenStream( Iterator it, Iterator itEnd ) : it( it ), itEnd( itEnd ) {
+        TokenStream( Iterator it_, Iterator itEnd_ ) : it( it_ ), itEnd( itEnd_ ) {
             loadBuffer();
         }
 
@@ -150,7 +150,7 @@ namespace detail {
             return !m_tokenBuffer.empty() || it != itEnd;
         }
 
-        auto count() const -> size_t { return m_tokenBuffer.size() + (itEnd - it); }
+        auto count() const -> size_t { return m_tokenBuffer.size() + static_cast<size_t>(itEnd - it); }
 
         auto operator*() const -> Token {
             assert( !m_tokenBuffer.empty() );
