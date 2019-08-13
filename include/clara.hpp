@@ -37,6 +37,7 @@
 #include <set>
 #include <algorithm>
 
+
 #if !defined(CLARA_PLATFORM_WINDOWS) && ( defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) )
 #define CLARA_PLATFORM_WINDOWS
 #endif
@@ -651,6 +652,14 @@ namespace detail {
             return { { oss.str(), m_description } };
         }
 
+        auto getOptNames() const -> std::string {
+            std::string optNames = "";
+            for (auto const &name : m_optNames) {
+                optNames.append(name + ";");
+            }
+            return optNames;
+        }
+
         auto isMatch( std::string const &optToken ) const -> bool {
             auto normalisedToken = normaliseOpt( optToken );
             for( auto const &name : m_optNames ) {
@@ -666,6 +675,20 @@ namespace detail {
             auto validationResult = validate();
             if( !validationResult )
                 return InternalParseResult( validationResult );
+
+            if (!isOptional()) {
+                auto remainingTokens = tokens;
+                auto requiredOptionMatched = false;
+                while (remainingTokens) {
+                    if (isMatch(remainingTokens->token)) {
+                        requiredOptionMatched = true;
+                    }
+                    remainingTokens = ++remainingTokens;
+                }
+                if (!requiredOptionMatched) {
+                    return InternalParseResult::runtimeError( "The required option " + getOptNames() + " is not provided. ");
+                }
+            }
 
             auto remainingTokens = tokens;
             if( remainingTokens && remainingTokens->type == TokenType::Option ) {
@@ -841,7 +864,6 @@ namespace detail {
         using ParserBase::parse;
 
         auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
-
             struct ParserInfo {
                 ParserBase const* parser = nullptr;
                 size_t count = 0;
@@ -859,6 +881,7 @@ namespace detail {
 
             m_exeName.set( exeName );
 
+            std::set<std::string> tokenList;
             auto result = InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
@@ -866,6 +889,7 @@ namespace detail {
                 for( size_t i = 0; i < totalParsers; ++i ) {
                     auto&  parseInfo = parseInfos[i];
                     if( parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality() ) {
+                        tokenList.insert(result.value().remainingTokens()->token);
                         result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
                         if (!result)
                             return result;
@@ -882,7 +906,22 @@ namespace detail {
                 if( !tokenParsed )
                     return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
-            // !TBD Check missing required options
+
+            for (auto const &opt : m_options) {
+                if (!opt.isOptional()) {
+                    auto matched = false;
+                    for (auto const &token : tokenList) {
+                        if (opt.isMatch(token)) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched) {
+                        return InternalParseResult::runtimeError( "The required option " + opt.getOptNames() + " is not provided. ");
+                    }
+                }
+            }
+
             return result;
         }
     };
