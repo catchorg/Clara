@@ -449,6 +449,31 @@ TEST_CASE( "char* args" ) {
     }
 }
 
+TEST_CASE( "dash as positional argument" ) {
+    std::string name;
+    bool showHelp = false;
+    auto parser
+            = Help( showHelp )
+            | Arg( name, "input file" )
+                 ( "Input file" );
+
+    SECTION( "args" ) {
+        auto result = parser.parse( Args{ "cat", "filename" } );
+        CHECK( result );
+        REQUIRE( name == "filename" );
+    }
+    SECTION( "dash arg" ) {
+        auto result = parser.parse( Args{ "cat", "-" } );
+        CHECK( result );
+        REQUIRE( name == "-" );
+    }
+    SECTION( "slash arg" ) {
+        auto result = parser.parse( Args{ "cat", "/" } );
+        CHECK( result );
+        REQUIRE( name == "/" );
+    }
+}
+
 TEST_CASE( "different widths" ) {
 
     std::string s;
