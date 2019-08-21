@@ -84,6 +84,18 @@ TEST_CASE( "single parsers" ) {
     }
 }
 
+TEST_CASE( "single arg" ) {
+    std::string name;
+    auto p = Arg(name, "one lonely arg");
+
+    REQUIRE( name == "" );
+
+    SECTION( "foo" ) {
+        p.parse( Args{ "TestApp", "foo" } );
+        REQUIRE( name == "foo" );
+    }
+}
+
 struct Config {
     int m_rngSeed;
     std::string m_name;
