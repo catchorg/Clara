@@ -96,8 +96,10 @@ TEST_CASE( "Combined parser" ) {
     Config config;
 
     bool showHelp = false;
+    bool showVersion = false;
     auto parser
             = Help( showHelp )
+            | Version(showVersion)
             | Opt( config.m_rngSeed, "time|value" )
                 ["--rng-seed"]["-r"]
                 ("set a specific seed for random numbers" )
@@ -121,6 +123,7 @@ TEST_CASE( "Combined parser" ) {
                     "\n"
                     "where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
+                    "  -v, --version                  display version\n"
                     "  --rng-seed, -r <time|value>    set a specific seed for random numbers\n"
                     "  -n, --name <name>              the name to use\n"
                     "  -f, --flag                     a flag to set\n"
@@ -136,6 +139,7 @@ TEST_CASE( "Combined parser" ) {
         REQUIRE( config.m_value == 123.45 );
         REQUIRE( config.m_tests == std::vector<std::string> { "test1", "test2" } );
         CHECK( showHelp == false );
+        CHECK( showVersion == false);
     }
     SECTION( "help" ) {
         auto result = parser.parse( Args{ "TestApp", "-?", "-n:NotSet" } );
@@ -143,6 +147,15 @@ TEST_CASE( "Combined parser" ) {
         CHECK( result.value().type() == ParseResultType::ShortCircuitAll );
         CHECK( config.m_name == "" ); // We should never have processed -n:NotSet
         CHECK( showHelp == true );
+        CHECK( showVersion == false);
+    }
+    SECTION( "version" ) {
+        auto result = parser.parse( Args{ "TestApp", "-v", "-n:NotSet" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::ShortCircuitAll );
+        CHECK( config.m_name == "" ); // We should never have processed -n:NotSet
+        CHECK( showHelp == false );
+        CHECK( showVersion == true );
     }
 }
 
