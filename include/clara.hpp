@@ -544,7 +544,7 @@ namespace detail {
         };
 
         auto hidden() -> DerivedT & {
-            m_hidden = true;
+            this->m_hidden = true;
             return static_cast<DerivedT &>(*this);
         };
 
