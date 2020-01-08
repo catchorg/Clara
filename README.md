@@ -62,7 +62,7 @@ auto cli
 ```
 
 `Opt`s specify options that start with a short dash (`-`) or long dash (`--`).
-On Windows forward slashes are also accepted (and automatically interpretted as a short dash).
+On Windows forward slashes are also accepted (and automatically interpreted as a short dash).
 Options can be argument taking (such as `-w 42`), in which case the `Opt` takes a second argument - a hint,
 or they are pure flags (such as `-d`), in which case the `Opt` has only one argument - which must be a boolean.
 The option names are provided in one or more sets of square brackets, and a description string can
@@ -99,8 +99,7 @@ To see which direction Clara is going in, please see [the roadmap](Roadmap.md)
 ## Old version
 
 If you used the earlier, v0.x, version of Clara please note that this is a complete rewrite which assumes C++11 and has
-a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual
-work - so don't take this version until you're ready (and, of course, able to use C++11).
+a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual work - so don't take this version until you're ready (and, of course, able to use C++11).
 
 I hope you'll find the new interface an improvement - and this will be built on to offer new features moving forwards.
 I don't expect to maintain v0.x any further, but it remains on a branch.
