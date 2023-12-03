@@ -6,8 +6,9 @@
 
 using namespace clara;
 
+namespace Catch {
 template<>
-struct Catch::StringMaker<clara::detail::InternalParseResult> {
+struct StringMaker<clara::detail::InternalParseResult> {
     static std::string convert( clara::detail::InternalParseResult const& result ) {
         switch( result.type() ) {
             case clara::detail::ResultBase::Ok:
@@ -21,6 +22,18 @@ struct Catch::StringMaker<clara::detail::InternalParseResult> {
         }
     }
 };
+}
+
+std::string toString( Opt const& opt ) {
+    std::ostringstream oss;
+    oss << (Parser() | opt);
+    return oss.str();
+}
+std::string toString( Parser const& p ) {
+    std::ostringstream oss;
+    oss << p;
+    return oss.str();
+}
 
 // !TBD
 // for Catch:
@@ -102,10 +115,7 @@ TEST_CASE( "Combined parser" ) {
                 ( "which test or tests to use" );
 
     SECTION( "usage" ) {
-        std::ostringstream oss;
-        oss << parser;
-        auto usage = oss.str();
-        REQUIRE(usage ==
+        REQUIRE(toString(parser) ==
                     "Usage:\n"
                     "  <executable> [<test name|tags|pattern> ... ] <options>\n"
                     "\n"
@@ -259,6 +269,30 @@ TEST_CASE( "cmdline" ) {
 
             REQUIRE(config.flag == false);
         }
+
+        SECTION( "arg before flag" )
+        {
+            auto result = cli.parse({ "TestApp", "-f", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("following flag")
+        {
+            auto result = cli.parse({ "TestApp", "something", "-f" });
+            REQUIRE( result );
+            REQUIRE( config.flag );
+            REQUIRE( config.firstPos == "something" );
+        }
+
+        SECTION("no flag")
+        {
+            auto result = cli.parse({ "TestApp", "something" });
+            REQUIRE( result );
+            REQUIRE( config.flag == false );
+            REQUIRE( config.firstPos == "something" );
+        }
     }
 
 #ifdef CLARA_PLATFORM_WINDOWS
@@ -299,8 +333,73 @@ TEST_CASE( "cmdline" ) {
     }
 }
 
+TEST_CASE( "flag parser" ) {
+
+    bool flag = false;
+    auto p = Opt( flag, "true|false" )
+            ["-f"]
+            ("A flag");
+
+    SECTION( "set flag with true" ) {
+        auto result = p.parse( {"TestApp", "-f", "true"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with yes" ) {
+        auto result = p.parse( {"TestApp", "-f", "yes"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with y" ) {
+        auto result = p.parse( {"TestApp", "-f", "y"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with 1" ) {
+        auto result = p.parse( {"TestApp", "-f", "1"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with on" ) {
+        auto result = p.parse( {"TestApp", "-f", "on"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+    SECTION( "set flag with tRUe" ) {
+        auto result = p.parse( {"TestApp", "-f", "tRUe"} );
+        REQUIRE( result );
+        REQUIRE( flag );
+    }
+
+    SECTION( "unset flag with false" ) {
+        flag = true;
+        auto result = p.parse( {"TestApp", "-f", "false"} );
+        REQUIRE( result) ;
+        REQUIRE( flag == false );
+    }
+    SECTION( "invalid inputs" ) {
+        using namespace Catch::Matchers;
+        auto result = p.parse( {"TestApp", "-f", "what"} );
+        REQUIRE( !result ) ;
+        REQUIRE_THAT( result.errorMessage(), Contains( "Expected a boolean value" ) );
+
+        result = p.parse( {"TestApp", "-f"} );
+        REQUIRE( !result ) ;
+        REQUIRE_THAT( result.errorMessage(), Contains( "Expected argument following -f" ) );
+    }
+}
+
+TEST_CASE( "usage", "[.]" ) {
+
+    TestOpt config;
+    auto cli = config.makeCli();
+    std::cout << cli << std::endl;
+}
+
 TEST_CASE( "Invalid parsers" )
 {
+    using namespace Catch::Matchers;
+
     TestOpt config;
 
     SECTION( "no options" )
@@ -309,6 +408,20 @@ TEST_CASE( "Invalid parsers" )
         auto result = cli.parse( { "TestApp", "-o", "filename" } );
         CHECK( !result );
         CHECK( result.errorMessage() == "No options supplied to Opt" );
+    }
+    SECTION( "no option name" )
+    {
+        auto cli = Opt( config.number, "number" )[""];
+        auto result = cli.parse( { "TestApp", "-o", "filename" } );
+        CHECK( !result );
+        CHECK( result.errorMessage() == "Option name cannot be empty" );
+    }
+    SECTION( "invalid option name" )
+    {
+        auto cli = Opt( config.number, "number" )["invalid"];
+        auto result = cli.parse( { "TestApp", "-o", "filename" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), StartsWith( "Option name must begin with '-'" ) );
     }
 }
 
@@ -342,6 +455,139 @@ TEST_CASE( "Unrecognised opts" ) {
     CHECK( !result );
     CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token") && Contains( "-b" ) );
 }
+
+TEST_CASE( "char* args" ) {
+
+    std::string value;
+    Parser cli = Parser() | Arg( value, "value" );
+
+    SECTION( "char*" ) {
+        char* args[] = { (char*)"TestApp", (char*)"hello" };
+
+        auto result = cli.parse( Args( 2, args ) );
+        REQUIRE( result );
+        REQUIRE( value == "hello" );
+    }
+    SECTION( "char*" ) {
+        const char* args[] = { "TestApp", "hello" };
+
+        auto result = cli.parse( Args( 2, args ) );
+        REQUIRE( result );
+        REQUIRE( value == "hello" );
+    }
+}
+
+TEST_CASE( "different widths" ) {
+
+    std::string s;
+
+    auto shortOpt
+        = Opt( s, "short" )
+           ["-s"]["--short"]
+           ( "not much" );
+    auto longHint
+        = Opt( s, "A very very long hint that should force the whole line to wrap awkwardly. I hope no-one ever writes anything like thus - but there's always *someone*" )
+           ["-x"]
+           ("short description");
+
+    auto longDesc
+        = Opt( s, "hint")
+            ["-y"]
+            ( "In this one it's the description field that is really really long. We should be split over several lines, but complete the description before starting to show the next option" );
+
+    auto longOptName
+            = Opt( s, "hint")
+            ["--this-one-just-has-an-overly-long-option-name-that-should-push-the-left-hand-column-out"]
+            ( "short desc" );
+
+    auto longEverything
+        = Opt( s, "this is really over the top, but it has to be tested. In this case we have a very long hint (far longer than anyone should ever even think of using), which should be enough to wrap just on its own...")
+            ["--and-a-ridiculously-long-long-option-name-that-would-be-silly-to-write-but-hey-if-it-can-handle-this-it-can-handle-anything-right"]
+            ( "*and* a stupid long description, which seems a bit redundant give all the other verbosity. But some people just love to write. And read. You have to be prepared to do a lot of both for this to be useful.");
+
+    SECTION( "long hint" )
+        REQUIRE_NOTHROW( toString( longHint ) == "?" );
+
+    SECTION( "long desc" )
+        REQUIRE_NOTHROW( toString( longDesc ) );
+
+    SECTION( "long opt name" )
+        REQUIRE_NOTHROW( toString( longOptName ) == "?" );
+
+    SECTION( "long everything" )
+        REQUIRE_NOTHROW( toString( longEverything ) == "?" );
+}
+
+TEST_CASE( "newlines in description" ) {
+
+    SECTION( "single, long description" ) {
+        int i;
+        auto opt = Opt(i, "i")["-i"](
+                "This string should be long enough to force a wrap in the first instance. But what we really want to test is where if we put an explicit newline in the string, say, here\nthat it is formatted correctly");
+
+        REQUIRE(toString(opt) ==
+                "usage:\n"
+                        "  <executable>  options\n"
+                        "\n"
+                        "where options are:\n"
+                        "  -i <i>    This string should be long enough to force a wrap in the first\n"
+                        "            instance. But what we really want to test is where if we put an\n"
+                        "            explicit newline in the string, say, here\n"
+                        "            that it is formatted correctly\n");
+    }
+    SECTION( "multiple entries" ) {
+        int a,b,c;
+        auto p
+            = Opt(a, "a")
+                ["-a"]["--longishOption"]
+                ("A description with:\nA new line right in the middle")
+            | Opt(b, "b")
+                ["-b"]["--bb"]
+                ("This description also has\nA new line")
+              | Opt(c, "c")
+                ["-c"]["--cc"]
+                ("Another\nnewline. In fact this one has line-wraps, as well as mutiple\nnewlines and\n\n- leading hyphens");
+
+        REQUIRE(toString(p) ==
+                "usage:\n"
+                        "  <executable>  options\n"
+                        "\n"
+                        "where options are:\n"
+                        "  -a, --longishOption <a>    A description with:\n"
+                        "                             A new line right in the middle\n"
+                        "  -b, --bb <b>               This description also has\n"
+                        "                             A new line\n"
+                        "  -c, --cc <c>               Another\n"
+                        "                             newline. In fact this one has line-wraps, as\n"
+                        "                             well as mutiple\n"
+                        "                             newlines and\n"
+                        "                             \n"
+                        "                             - leading hyphens\n");
+
+
+
+    }
+}
+
+#if defined(CLARA_CONFIG_OPTIONAL_TYPE)
+TEST_CASE("Reading into std::optional") {
+    CLARA_CONFIG_OPTIONAL_TYPE<std::string> name;
+    auto p = Opt(name, "name")
+        ["-n"]["--name"]
+        ("the name to use");
+    SECTION("Not set") {
+        auto result = p.parse(Args{ "TestApp", "-q", "Pixie" });
+        REQUIRE( result );
+        REQUIRE_FALSE( name.has_value() );
+    }
+    SECTION("Provided") {
+        auto result = p.parse(Args{ "TestApp", "-n", "Pixie" });
+        REQUIRE( result );
+        REQUIRE( name.has_value() );
+        REQUIRE( name.value() == "Pixie" );
+    }
+}
+#endif // CLARA_CONFIG_OPTIONAL_TYPE
 
 TEST_CASE( "Subcommands" ) {
     using namespace Catch::Matchers;

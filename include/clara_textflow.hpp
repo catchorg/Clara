@@ -2,8 +2,8 @@
 //
 // A single-header library for wrapping and laying out basic text, by Phil Nash
 //
-// This work is licensed under the BSD 2-Clause license.
-// See the accompanying LICENSE file, or the one at https://opensource.org/licenses/BSD-2-Clause
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 // This project is hosted at https://github.com/philsquared/textflowcpp
 
@@ -110,6 +110,12 @@ namespace clara { namespace TextFlow {
             }
 
         public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = std::string;
+            using pointer = value_type*;
+            using reference = value_type&;
+            using iterator_category = std::forward_iterator_tag;
+
             explicit iterator( Column const& column ) : m_column( column ) {
                 assert( m_column.m_width > m_column.m_indent );
                 assert( m_column.m_initialIndent == std::string::npos || m_column.m_width > m_column.m_initialIndent );
@@ -121,10 +127,7 @@ namespace clara { namespace TextFlow {
             auto operator *() const -> std::string {
                 assert( m_stringIndex < m_column.m_strings.size() );
                 assert( m_pos <= m_end );
-                if( m_pos + m_column.m_width < m_end )
-                    return addIndentAndSuffix(line().substr(m_pos, m_len));
-                else
-                    return addIndentAndSuffix(line().substr(m_pos, m_end - m_pos));
+                return addIndentAndSuffix(line().substr(m_pos, m_len));
             }
 
             auto operator ++() -> iterator& {
@@ -234,6 +237,12 @@ namespace clara { namespace TextFlow {
             }
 
         public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = std::string;
+            using pointer = value_type*;
+            using reference = value_type&;
+            using iterator_category = std::forward_iterator_tag;
+
             explicit iterator( Columns const& columns )
             :   m_columns( columns.m_columns ),
                 m_activeIterators( m_columns.size() )
@@ -323,6 +332,6 @@ namespace clara { namespace TextFlow {
         cols += other;
         return cols;
     }
-}} // namespace clara::TextFlow
+}}
 
 #endif // CLARA_TEXTFLOW_HPP_INCLUDED

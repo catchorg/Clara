@@ -1,4 +1,12 @@
-# Clara 1.0
+# Clara v1.1.5
+[![Build Status](https://travis-ci.org/catchorg/Clara.svg?branch=master)](https://travis-ci.org/catchorg/Clara)
+[![Build status](https://ci.appveyor.com/api/projects/status/github/catchorg/Clara?brach=master&svg=true)](https://ci.appveyor.com/project/catchorg/clara)
+[![codecov](https://codecov.io/gh/catchorg/Clara/branch/master/graph/badge.svg)](https://codecov.io/gh/catchorg/Clara)
+
+# !! This repository is unmaintained. Go [here](https://github.com/bfgroup/Lyra) for a fork that is somewhat maintained. !!
+
+-----------------------------
+
 
 A simple to use, composable, command line parser for C++ 11 and beyond.
 
@@ -32,7 +40,7 @@ if( !result ) {
 
 Note that exceptions are not used for error handling.
 
-You can combine parsers by composing with `+`, like this:
+You can combine parsers by composing with `|`, like this:
 
 ```c++
 int width = 0;
@@ -43,13 +51,13 @@ auto cli
     = Opt( width, "width" )
         ["-w"]["--width"]
         ("How wide should it be?")
-    + Opt( name, "name" )
+    | Opt( name, "name" )
         ["-n"]["--name"]
         ("By what name should I be known")
-    + Opt( doIt )
+    | Opt( doIt )
         ["-d"]["--doit"]
         ("Do the thing" )
-    + Arg( command, "command" )
+    | Arg( command, "command" )
         ("which command to run");
 ```
 
@@ -84,11 +92,14 @@ Some of the key features:
 - Uses Result types for error propagation, rather than exceptions (doesn't yet build with exceptions disabled, but that will be coming later)
 - Models POSIX standards for short and long opt behaviour.
 
+## Roadmap
+
+To see which direction Clara is going in, please see [the roadmap](Roadmap.md)
 
 ## Old version
 
 If you used the earlier, v0.x, version of Clara please note that this is a complete rewrite which assumes C++11 and has
-a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual 
+a different interface (composability was a big step forward). Conversion between v0.x and v1.x is a fairly simple and mechanical task, but is a bit of manual
 work - so don't take this version until you're ready (and, of course, able to use C++11).
 
 I hope you'll find the new interface an improvement - and this will be built on to offer new features moving forwards.

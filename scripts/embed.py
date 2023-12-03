@@ -23,7 +23,7 @@ class LineMapper:
         self.outerNamespace = outerNamespace
 
     def replaceId( self, lineNo, id ):
-        if not self.idMap.has_key( id ):
+        if not id in self.idMap:
             raise ValueError( "Unrecognised macro identifier: '{0}' on line: {1}".format( id, lineNo ) )
         subst = self.idMap[id]
         if subst == "":

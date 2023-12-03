@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # This is an initial cut of a general header stitching script.
 # It is currently hard-coded to work with Clara, but that is purely
 # a path thing. The next step is the genericise this further and
@@ -173,7 +175,7 @@ class FileParser:
                 if m:
                     self.handleIf( m.group(1) )
                 else:
-                    print "****** error ***** " + line
+                    print( "****** error ***** " + line )
 
     def handleEndif( self, trailing ):
         global level
@@ -218,8 +220,8 @@ p.parse()
 
 o.close()
 
-print "-------------"
-print level
+print( "-------------" )
+print( level )
 #for h in systemHeaders:
 #    print "#include <" + h + ">"
 #print
