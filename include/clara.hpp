@@ -100,9 +100,7 @@ namespace detail {
         void loadBuffer() {
             m_tokenBuffer.resize( 0 );
 
-            // Skip any empty strings
-            while( it != itEnd && it->empty() )
-                ++it;
+            // Note: not skiping empty strings
 
             if( it != itEnd ) {
                 auto const &next = *it;
@@ -962,10 +960,13 @@ namespace detail {
             for( auto const& opt : m_options ) parsers[i++] = &opt;
             for( auto const& arg : m_args ) parsers[i++] = &arg;
 
-            if( m_isSubcmd )
-                m_exeName.set( tokens->token );
-            else
-                m_exeName.set( exeName );
+            if (m_isSubcmd) {
+                if (auto result = m_exeName.set(tokens->token); !result)
+                    return InternalParseResult(result);
+            }
+            else {
+                m_exeName.set(exeName);
+            }
 
             auto result = InternalParseResult::ok( m_isSubcmd ?
                 ParseState( ParseResultType::Matched, ++TokenStream( tokens ) ) :
