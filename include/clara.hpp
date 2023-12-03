@@ -1021,8 +1021,8 @@ namespace detail {
             return *this;
         }
 
-        auto alludeInUsage() -> Cmd& {
-            m_alludeInUsage = true;
+        auto alludeInUsage(bool yes = true) -> Cmd& {
+            m_alludeInUsage = yes;
             return *this;
         }
 
