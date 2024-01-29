@@ -456,7 +456,7 @@ namespace detail {
         void loadBuffer() {
             m_tokenBuffer.resize( 0 );
 
-            // Note: not skiping empty strings
+            // Note: not skipping empty strings
 
             if( it != itEnd ) {
                 auto const &next = *it;
@@ -1319,9 +1319,6 @@ namespace detail {
                 }
             }
 
-            struct ParserInfo {
-                ParserBase const* parser = nullptr;
-            };
             const size_t totalParsers = m_options.size() + m_args.size();
             assert( totalParsers < 512 );
             // ParserInfo parseInfos[totalParsers]; // <-- this is what we really want to do
@@ -1347,7 +1344,8 @@ namespace detail {
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
-                for (auto& parser : parsers) {
+                for (size_t i = 0; i < totalParsers; ++i) {
+                    ParserBase const* parser = parsers[i];
                     if( parser->canParse() ) {
                         result = parser->internalParse(exeName, result.value().remainingTokens());
                         if (!result)
