@@ -1,4 +1,4 @@
-#include "clara.hpp"
+#include <clara.hpp>
 
 #include "catch.hpp"
 
@@ -116,10 +116,13 @@ TEST_CASE( "Combined parser" ) {
 
     SECTION( "usage" ) {
         REQUIRE(toString(parser) ==
-                    "usage:\n"
-                    "  <executable> [<test name|tags|pattern> ... ] options\n"
+                    "Usage:\n"
+                    "  <executable> [<test name|tags|pattern> ... ] <options>\n"
                     "\n"
-                    "where options are:\n"
+                    "Where arguments are:\n"
+                    "  <test name|tags|pattern>    which test or tests to use\n"
+                    "\n"
+                    "Where options are:\n"
                     "  -?, -h, --help                 display usage information\n"
                     "  --rng-seed, -r <time|value>    set a specific seed for random numbers\n"
                     "  -n, --name <name>              the name to use\n"
@@ -128,7 +131,7 @@ TEST_CASE( "Combined parser" ) {
         );
     }
     SECTION( "some args" ) {
-        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        auto result = parser.parse( Args{ "TestApp", "-r", "42", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
         CHECK( result );
         CHECK( result.value().type() == ParseResultType::Matched );
 
@@ -136,6 +139,13 @@ TEST_CASE( "Combined parser" ) {
         REQUIRE( config.m_value == 123.45 );
         REQUIRE( config.m_tests == std::vector<std::string> { "test1", "test2" } );
         CHECK( showHelp == false );
+    }
+    SECTION( "missing required" ) {
+        using namespace Catch::Matchers;
+
+        auto result = parser.parse( Args{ "TestApp", "-n", "Bill", "-d:123.45", "-f", "test1", "test2" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), Contains( "Missing token" ) && Contains( "time|value" ) );
     }
     SECTION( "help" ) {
         auto result = parser.parse( Args{ "TestApp", "-?", "-n:NotSet" } );
@@ -178,8 +188,7 @@ struct TestOpt {
               ( "A flag" )
           | Arg( firstPos, "first arg" )
               ( "First position" )
-          | Arg( secondPos, "second arg" )
-              ( "Second position" );
+          | Arg( secondPos, "second arg" );
     }
 };
 
@@ -302,6 +311,25 @@ TEST_CASE( "cmdline" ) {
 
         REQUIRE( config.firstPos == "1st" );
         REQUIRE( config.secondPos == "2nd" );
+    }
+    SECTION( "usage" ) {
+        std::ostringstream oss;
+        oss << cli;
+        auto usage = oss.str();
+        REQUIRE(usage ==
+                    "Usage:\n"
+                    "  <executable> [<first arg> <second arg>] <options>\n"
+                    "\n"
+                    "Where arguments are:\n"
+                    "  <first arg>    First position\n"
+                    "\n"
+                    "Where options are:\n"
+                    "  -o, --output <filename>    specifies output file\n"
+                    "  -n <an integral value>\n"
+                    "  -i <index>                 An index, which is an integer between 0 and 10,\n"
+                    "                             inclusive\n"
+                    "  -f                         A flag\n"
+        );
     }
 }
 
@@ -560,3 +588,106 @@ TEST_CASE("Reading into std::optional") {
     }
 }
 #endif // CLARA_CONFIG_OPTIONAL_TYPE
+
+TEST_CASE( "Subcommands" ) {
+    using namespace Catch::Matchers;
+
+    std::string subcommand, subArg;
+    bool showHelp = false, subOpt = false;
+
+    auto cli = (
+          // create a full parser
+          Parser{} | Help{ showHelp }
+        , Cmd{ subcommand, "subcommand" }( "Execute subcommand" )
+          | Arg{ subArg, "arg1" }( "Arg1" ).required()
+          | Opt{ subOpt }["--opt"]( "Opt" )
+        , Cmd{ subcommand, "important" }( "Execute important subcommand" ).alludeInUsage()
+          | Arg{ subArg, "arg1" }( "Arg1" ).required()
+          | Opt{ subOpt }["--opt"]( "Opt" )
+        , Cmd{ subcommand, "internal" }( "Execute another subcommand" ).hidden()
+    );
+    
+    REQUIRE( subcommand == "" );
+
+    SECTION( "subcommand.1" ) {
+        auto result = cli.parse( { "TestApp", "subcommand", "a1" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "subcommand" ) );
+        CHECK_THAT( subArg, Equals( "a1" ) );
+        CHECK( !subOpt);
+    }
+    SECTION( "subcommand.2" ) {
+        auto result = cli.parse( { "TestApp", "subcommand", "a1", "--opt" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "subcommand" ) );
+        CHECK_THAT( subArg, Equals( "a1" ) );
+        CHECK( subOpt );
+    }
+    SECTION( "hidden subcommand" ) {
+        auto result = cli.parse( { "TestApp", "internal" } );
+        CHECK( result );
+        CHECK( result.value().type() == ParseResultType::Matched );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "internal" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt );
+    }
+    SECTION( "unmatched subcommand" ) {
+        auto result = cli.parse( { "TestApp", "xyz" } );
+        CHECK( !result );
+        CHECK_THAT( result.errorMessage(), Contains( "Unrecognised token" ) && Contains( "xyz" ) );
+        CHECK( !showHelp );
+        CHECK_THAT( subcommand, Equals( "" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt );
+    }
+    SECTION( "app version" ) {
+        auto result = cli.parse( { "TestApp", "-h" } );
+        CHECK( result );
+        CHECK( showHelp );
+        CHECK_THAT( subcommand, Equals( "" ) );
+        CHECK_THAT( subArg, Equals( "" ) );
+        CHECK( !subOpt);
+    }
+    SECTION( "app usage" ) {
+        std::ostringstream oss;
+        oss << cli;
+        auto usage = oss.str();
+        REQUIRE(usage ==
+            R"(Usage:
+  <executable> <options>
+  <executable> <subcommand>
+  <executable> important <arg1> <options>
+
+Where options are:
+  -?, -h, --help    display usage information
+
+Where subcommands are:
+  subcommand    Execute subcommand
+  important     Execute important subcommand
+)"
+        );
+    }
+    SECTION( "subcommand usage" ) {
+        std::ostringstream oss;
+        oss << *cli.findCmd( "subcommand" );
+        auto usage = oss.str();
+        REQUIRE(usage ==
+            R"(Execute subcommand
+
+Usage:
+  subcommand <arg1> <options>
+
+Where arguments are:
+  <arg1>    Arg1
+
+Where options are:
+  --opt    Opt
+)"
+);
+    }
+}

@@ -35,6 +35,7 @@
 #include <sstream>
 #include <cassert>
 #include <set>
+#include <utility>
 #include <algorithm>
 
 #if !defined(CLARA_PLATFORM_WINDOWS) && ( defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) )
@@ -69,16 +70,20 @@ namespace detail {
         std::vector<std::string> m_args;
 
     public:
-        Args( int argc, char const* const* argv )
-            : m_exeName(argv[0]),
-              m_args(argv + 1, argv + argc) {}
+        // exeName is especially useful for Win32 programs which get passed the whole commandline
+        // (argv returned from `CommandLineToArgvW` doesn't contain the executable path)
+        Args( int argc, char const* const* argv, std::string exeName = std::string{} ) {
+            bool exeOffArgv = exeName.empty();
+            m_exeName = exeOffArgv ? argv[0] : std::move(exeName);
+            m_args.assign(argv + (exeOffArgv ? 1 : 0), argv + argc);
+        }
 
         Args( std::initializer_list<std::string> args )
         :   m_exeName( *args.begin() ),
             m_args( args.begin()+1, args.end() )
         {}
 
-        auto exeName() const -> std::string {
+        auto exeName() const -> std::string const& {
             return m_exeName;
         }
     };
@@ -111,9 +116,7 @@ namespace detail {
         void loadBuffer() {
             m_tokenBuffer.resize( 0 );
 
-            // Skip any empty strings
-            while( it != itEnd && it->empty() )
-                ++it;
+            // Note: not skipping empty strings
 
             if( it != itEnd ) {
                 auto const &next = *it;
@@ -125,7 +128,7 @@ namespace detail {
                     } else {
                         if( next[1] != '-' && next.size() > 2 ) {
                             std::string opt = "- ";
-                            for( size_t i = 1; i < next.size(); ++i ) {
+                            for( std::size_t i = 1; i < next.size(); ++i ) {
                                 opt[1] = next[i];
                                 m_tokenBuffer.push_back( { TokenType::Option, opt } );
                             }
@@ -150,7 +153,7 @@ namespace detail {
             return !m_tokenBuffer.empty() || it != itEnd;
         }
 
-        auto count() const -> size_t { return m_tokenBuffer.size() + (itEnd - it); }
+        auto count() const -> std::size_t { return m_tokenBuffer.size() + (itEnd - it); }
 
         auto operator*() const -> Token {
             assert( !m_tokenBuffer.empty() );
@@ -254,7 +257,7 @@ namespace detail {
 
         explicit operator bool() const { return m_type == ResultBase::Ok; }
         auto type() const -> ResultBase::Type { return m_type; }
-        auto errorMessage() const -> std::string { return m_errorMessage; }
+        auto errorMessage() const -> std::string const& { return m_errorMessage; }
 
     protected:
         void enforceOk() const override {
@@ -465,11 +468,31 @@ namespace detail {
     struct Parser;
 
     class ParserBase {
+    protected:
+        bool m_hidden;
+
     public:
+        ParserBase() : m_hidden( false ) {}
         virtual ~ParserBase() = default;
-        virtual auto validate() const -> Result { return Result::ok(); }
-        virtual auto parse( std::string const& exeName, TokenStream const &tokens) const -> InternalParseResult  = 0;
-        virtual auto cardinality() const -> size_t { return 1; }
+        virtual auto canParse() const -> bool { return false; }
+        virtual auto validateSettings() const -> Result { return Result::ok(); }
+        virtual auto validateFinal() const -> Result { return Result::ok(); }
+        virtual auto internalParse( std::string const& exeName, TokenStream const &tokens ) const->InternalParseResult = 0;
+
+        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult {
+            auto validationResult = validateSettings();
+            if( !validationResult )
+                return InternalParseResult( validationResult );
+
+            auto result = internalParse( exeName, tokens );
+
+            // Call this even if parsing failed in order to perform cleanup
+            validationResult = validateFinal();
+            if( result && result.value().type() != ParseResultType::ShortCircuitAll && !validationResult )
+                return InternalParseResult( validationResult );
+
+            return result;
+        }
 
         auto parse( Args const &args ) const -> InternalParseResult {
             return parse( args.exeName(), TokenStream( args ) );
@@ -494,20 +517,26 @@ namespace detail {
         std::shared_ptr<BoundRef> m_ref;
         std::string m_hint;
         std::string m_description;
+        mutable std::size_t m_count;
 
-        explicit ParserRefImpl( std::shared_ptr<BoundRef> const &ref ) : m_ref( ref ) {}
+        explicit ParserRefImpl( std::shared_ptr<BoundRef> const &ref )
+            : m_ref( ref ),
+              m_count( 0 )
+        {}
 
     public:
         template<typename T>
         ParserRefImpl( T &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundValueRef<T>>( ref ) ),
-            m_hint( hint )
+            m_hint( hint ),
+            m_count( 0 )
         {}
 
         template<typename LambdaT>
         ParserRefImpl( LambdaT const &ref, std::string const &hint )
         :   m_ref( std::make_shared<BoundLambda<LambdaT>>( ref ) ),
-            m_hint(hint)
+            m_hint( hint ),
+            m_count( 0 )
         {}
 
         auto operator()( std::string const &description ) -> DerivedT & {
@@ -518,29 +547,48 @@ namespace detail {
         auto optional() -> DerivedT & {
             m_optionality = Optionality::Optional;
             return static_cast<DerivedT &>( *this );
-        };
+        }
 
         auto required() -> DerivedT & {
             m_optionality = Optionality::Required;
             return static_cast<DerivedT &>( *this );
-        };
+        }
+
+        auto hidden() -> DerivedT & {
+            this->m_hidden = true;
+            return static_cast<DerivedT &>(*this);
+        }
 
         auto isOptional() const -> bool {
             return m_optionality == Optionality::Optional;
         }
 
-        auto cardinality() const -> size_t override {
+        virtual auto cardinality() const -> std::size_t {
             if( m_ref->isContainer() )
                 return 0;
             else
                 return 1;
         }
+        
+        auto validateFinal() const -> Result override {
+            if( !isOptional() && count() < 1 )
+                return Result::runtimeError( "Missing token: " + hint() );
+            m_count = 0;
+            return ComposableParserImpl<DerivedT>::validateFinal();
+        }
 
-        auto hint() const -> std::string { return m_hint; }
+        auto canParse() const -> bool override {
+            return (cardinality() == 0 || count() < cardinality());
+        }
+
+        auto hint() const -> std::string const& { return m_hint; }
+
+        auto count() const -> std::size_t { return m_count; }
     };
 
     class ExeName : public ComposableParserImpl<ExeName> {
         std::shared_ptr<std::string> m_name;
+        std::shared_ptr<std::string> m_description;
         std::shared_ptr<BoundValueRefBase> m_ref;
 
         template<typename LambdaT>
@@ -549,7 +597,10 @@ namespace detail {
         }
 
     public:
-        ExeName() : m_name( std::make_shared<std::string>( "<executable>" ) ) {}
+        ExeName()
+          : m_name( std::make_shared<std::string>( "<executable>" ) ),
+            m_description( std::make_shared<std::string>() )
+        {}
 
         explicit ExeName( std::string &ref ) : ExeName() {
             m_ref = std::make_shared<BoundValueRef<std::string>>( ref );
@@ -561,20 +612,22 @@ namespace detail {
         }
 
         // The exe name is not parsed out of the normal tokens, but is handled specially
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto internalParse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
         }
 
-        auto name() const -> std::string { return *m_name; }
-        auto set( std::string const& newName ) -> ParserResult {
+        auto name() const -> std::string const& { return *m_name; }
+        auto description( std::string d ) -> void { *m_description = move(d); }
+        auto description() const -> std::string const& { return *m_description; }
+        auto set( std::string newName, bool updateRef = true ) -> ParserResult {
 
             auto lastSlash = newName.find_last_of( "\\/" );
             auto filename = ( lastSlash == std::string::npos )
-                    ? newName
+                    ? move( newName )
                     : newName.substr( lastSlash+1 );
 
             *m_name = filename;
-            if( m_ref )
+            if( m_ref && updateRef )
                 return m_ref->setValue( filename );
             else
                 return ParserResult::ok( ParseResultType::Matched );
@@ -583,13 +636,19 @@ namespace detail {
 
     class Arg : public ParserRefImpl<Arg> {
     public:
-        using ParserRefImpl::ParserRefImpl;
+        using ParserRefImpl<Arg>::ParserRefImpl;
 
-        auto parse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto validationResult = validate();
-            if( !validationResult )
-                return InternalParseResult( validationResult );
+        auto getHelpColumns() const -> std::vector<HelpColumns> {
+            if( m_description.empty() || m_hidden )
+                return {};
+            else {
+                std::ostringstream oss;
+                oss << "<" << m_hint << ">";
+                return { { oss.str(), m_description} };
+            }
+        }
 
+        auto internalParse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto remainingTokens = tokens;
             auto const &token = *remainingTokens;
             if( token.type != TokenType::Argument )
@@ -601,8 +660,10 @@ namespace detail {
             auto result = valueRef->setValue( remainingTokens->token );
             if( !result )
                 return InternalParseResult( result );
-            else
+            else {
+                ++m_count;
                 return InternalParseResult::ok( ParseState( ParseResultType::Matched, ++remainingTokens ) );
+            }
         }
     };
 
@@ -621,15 +682,15 @@ namespace detail {
 
     public:
         template<typename LambdaT>
-        explicit Opt( LambdaT const &ref ) : ParserRefImpl( std::make_shared<BoundFlagLambda<LambdaT>>( ref ) ) {}
+        explicit Opt( LambdaT const &ref ) : ParserRefImpl<Opt>( std::make_shared<BoundFlagLambda<LambdaT>>( ref ) ) {}
 
-        explicit Opt( bool &ref ) : ParserRefImpl( std::make_shared<BoundFlagRef>( ref ) ) {}
+        explicit Opt( bool &ref ) : ParserRefImpl<Opt>( std::make_shared<BoundFlagRef>( ref ) ) {}
 
         template<typename LambdaT>
-        Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
+        Opt( LambdaT const &ref, std::string const &hint ) : ParserRefImpl<Opt>( ref, hint ) {}
 
         template<typename T>
-        Opt( T &ref, std::string const &hint ) : ParserRefImpl( ref, hint ) {}
+        Opt( T &ref, std::string const &hint ) : ParserRefImpl<Opt>( ref, hint ) {}
 
         auto operator[]( std::string const &optName ) -> Opt & {
             m_optNames.push_back( optName );
@@ -637,6 +698,9 @@ namespace detail {
         }
 
         auto getHelpColumns() const -> std::vector<HelpColumns> {
+            if( m_hidden )
+                return {};
+
             std::ostringstream oss;
             bool first = true;
             for( auto const &opt : m_optNames ) {
@@ -662,15 +726,11 @@ namespace detail {
 
         using ParserBase::parse;
 
-        auto parse( std::string const&, TokenStream const &tokens ) const -> InternalParseResult override {
-            auto validationResult = validate();
-            if( !validationResult )
-                return InternalParseResult( validationResult );
-
+        auto internalParse( std::string const &, TokenStream const &tokens ) const -> InternalParseResult override {
             auto remainingTokens = tokens;
             if( remainingTokens && remainingTokens->type == TokenType::Option ) {
                 auto const &token = *remainingTokens;
-                if( isMatch(token.token ) ) {
+                if( isMatch( token.token ) ) {
                     if( m_ref->isFlag() ) {
                         auto flagRef = static_cast<detail::BoundFlagRefBase*>( m_ref.get() );
                         auto result = flagRef->setFlag( true );
@@ -692,13 +752,14 @@ namespace detail {
                         if( result.value() == ParseResultType::ShortCircuitAll )
                             return InternalParseResult::ok( ParseState( result.value(), remainingTokens ) );
                     }
+                    ++m_count;
                     return InternalParseResult::ok( ParseState( ParseResultType::Matched, ++remainingTokens ) );
                 }
             }
             return InternalParseResult::ok( ParseState( ParseResultType::NoMatch, remainingTokens ) );
         }
 
-        auto validate() const -> Result override {
+        auto validateSettings() const -> Result override {
             if( m_optNames.empty() )
                 return Result::logicError( "No options supplied to Opt" );
             for( auto const &name : m_optNames ) {
@@ -712,7 +773,7 @@ namespace detail {
                     return Result::logicError( "Option name must begin with '-'" );
 #endif
             }
-            return ParserRefImpl::validate();
+            return ParserRefImpl<Opt>::validateSettings();
         }
     };
 
@@ -734,6 +795,9 @@ namespace detail {
     struct Parser : ParserBase {
 
         mutable ExeName m_exeName;
+        bool m_isSubcmd = false;
+        bool m_alludeInUsage = false;
+        std::vector<Parser> m_cmds;
         std::vector<Opt> m_options;
         std::vector<Arg> m_args;
 
@@ -755,6 +819,7 @@ namespace detail {
         auto operator|=( Parser const &other ) -> Parser & {
             m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
             m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
+            m_cmds.insert(m_cmds.end(), other.m_cmds.begin(), other.m_cmds.end());
             return *this;
         }
 
@@ -769,53 +834,97 @@ namespace detail {
         template<typename T>
         auto operator+( T const &other ) const -> Parser { return operator|( other ); }
 
-        auto getHelpColumns() const -> std::vector<HelpColumns> {
+        template<typename Parsers>
+        auto getHelpColumns(Parsers const& p) const -> std::vector<HelpColumns> {
             std::vector<HelpColumns> cols;
-            for (auto const &o : m_options) {
+            for (auto const &o : p) {
                 auto childCols = o.getHelpColumns();
+                cols.reserve( cols.size() + childCols.size() );
                 cols.insert( cols.end(), childCols.begin(), childCols.end() );
             }
             return cols;
         }
 
         void writeToStream( std::ostream &os ) const {
+            // print banner
+            if( !m_exeName.description().empty() ) {
+                os << m_exeName.description() << std::endl << std::endl;
+            }
             if (!m_exeName.name().empty()) {
-                os << "usage:\n" << "  " << m_exeName.name() << " ";
-                bool required = true, first = true;
-                for( auto const &arg : m_args ) {
-                    if (first)
-                        first = false;
-                    else
+                auto streamArgsAndOpts = [this, &os]( const Parser& p ) {
+                    bool required = true, first = true;
+                    for( auto const &arg : p.m_args ) {
                         os << " ";
-                    if( arg.isOptional() && required ) {
-                        os << "[";
-                        required = false;
+                        if( arg.isOptional() && required ) {
+                            os << "[";
+                            required = false;
+                        }
+                        os << "<" << arg.hint() << ">";
+                        if( arg.cardinality() == 0 )
+                            os << " ... ";
                     }
-                    os << "<" << arg.hint() << ">";
-                    if( arg.cardinality() == 0 )
-                        os << " ... ";
+                    if( !required )
+                        os << "]";
+                    if( !p.m_options.empty() )
+                        os << " <options>";
+                };
+
+                os << "Usage:\n" << "  " << m_exeName.name();
+                streamArgsAndOpts( *this );
+                if( !m_cmds.empty() ) {
+                    os << "\n  " << m_exeName.name();
+                    os << " <subcommand>";
+                    for( const Parser& sub : m_cmds )
+                    {
+                        if( sub.m_alludeInUsage )
+                        {
+                            os << "\n  " << m_exeName.name();
+                            os << " " << sub.m_exeName.name();
+                            streamArgsAndOpts( sub );
+                        }
+                    }
                 }
-                if( !required )
-                    os << "]";
-                if( !m_options.empty() )
-                    os << " options";
-                os << "\n\nwhere options are:" << std::endl;
+                os << "\n";
             }
 
-            auto rows = getHelpColumns();
-            size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
-            size_t optWidth = 0;
-            for( auto const &cols : rows )
-                optWidth = (std::max)(optWidth, cols.left.size() + 2);
+            auto streamHelpColumns = [&os]( std::vector<HelpColumns> const &rows, const std::string &header ) {
+                if( !rows.empty() ) {
+                    os << header << std::endl;
 
-            optWidth = (std::min)(optWidth, consoleWidth/2);
+                    std::size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
+                    std::size_t optWidth = 0;
+                    for( auto const &cols : rows )
+                        optWidth = (std::max)(optWidth, cols.left.size() + 2);
 
-            for( auto const &cols : rows ) {
-                auto row =
-                        TextFlow::Column( cols.left ).width( optWidth ).indent( 2 ) +
-                        TextFlow::Spacer(4) +
-                        TextFlow::Column( cols.right ).width( consoleWidth - 7 - optWidth );
-                os << row << std::endl;
+                    optWidth = (std::min)(optWidth, consoleWidth/2);
+
+                    for( auto const &cols : rows ) {
+                        auto row =
+                            TextFlow::Column( cols.left ).width( optWidth ).indent( 2 ) +
+                            TextFlow::Spacer(4) +
+                            TextFlow::Column( cols.right ).width( consoleWidth - 7 - optWidth );
+                        os << row << std::endl;
+                    }
+                }
+            };
+
+            streamHelpColumns( getHelpColumns( m_args ), "\nWhere arguments are:" );
+            streamHelpColumns( getHelpColumns( m_options ), "\nWhere options are:" );
+
+            if( !m_cmds.empty() ) {
+                std::vector<HelpColumns> cmdCols;
+                {
+                    cmdCols.reserve( m_cmds.size() );
+                    for( auto const &cmd : m_cmds ) {
+                        if( cmd.m_hidden )
+                            continue;
+                        const std::string &d = cmd.m_exeName.description();
+                        // first line
+                        cmdCols.push_back({ cmd.m_exeName.name(), d.substr(0, d.find('\n')) });
+                    }
+                }
+
+                streamHelpColumns(cmdCols, "\nWhere subcommands are:");
             }
         }
 
@@ -824,54 +933,85 @@ namespace detail {
             return os;
         }
 
-        auto validate() const -> Result override {
+        auto validateSettings() const -> Result override {
             for( auto const &opt : m_options ) {
-                auto result = opt.validate();
+                auto result = opt.validateSettings();
                 if( !result )
                     return result;
             }
             for( auto const &arg : m_args ) {
-                auto result = arg.validate();
+                auto result = arg.validateSettings();
                 if( !result )
                     return result;
             }
             return Result::ok();
         }
 
+        auto validateFinal() const -> Result override {
+            for( auto const &opt : m_options ) {
+                auto result = opt.validateFinal();
+                if( !result )
+                    return result;
+            }
+            for( auto const &arg : m_args ) {
+                auto result = arg.validateFinal();
+                if( !result )
+                    return result;
+            }
+            return Result::ok();
+        }
+
+        auto findCmd( const std::string& cmdName ) const -> Parser const* {
+            for( const Parser& cmd : m_cmds ) {
+                if( cmd.m_exeName.name() == cmdName )
+                    return &cmd;
+            }
+            return nullptr;
+        }
+
         using ParserBase::parse;
 
-        auto parse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
+        auto internalParse( std::string const& exeName, TokenStream const &tokens ) const -> InternalParseResult override {
+            if( !m_cmds.empty() && tokens ) {
+                std::string subCommand = tokens->token;
+                if( Parser const *cmd = findCmd( subCommand )) {
+                    return cmd->parse( subCommand, tokens );
+                }
+            }
 
-            struct ParserInfo {
-                ParserBase const* parser = nullptr;
-                size_t count = 0;
-            };
             const size_t totalParsers = m_options.size() + m_args.size();
             assert( totalParsers < 512 );
             // ParserInfo parseInfos[totalParsers]; // <-- this is what we really want to do
-            ParserInfo parseInfos[512];
+            ParserBase const* parsers[512];
 
             {
                 size_t i = 0;
-                for (auto const &opt : m_options) parseInfos[i++].parser = &opt;
-                for (auto const &arg : m_args) parseInfos[i++].parser = &arg;
+                for (auto const &opt : m_options) parsers[i++] = &opt;
+                for (auto const &arg : m_args) parsers[i++] = &arg;
             }
 
-            m_exeName.set( exeName );
+            if (m_isSubcmd) {
+                if (auto result = m_exeName.set(tokens->token); !result)
+                    return InternalParseResult(result);
+            }
+            else {
+                m_exeName.set(exeName);
+            }
 
-            auto result = InternalParseResult::ok( ParseState( ParseResultType::NoMatch, tokens ) );
+            auto result = InternalParseResult::ok( m_isSubcmd ?
+                ParseState( ParseResultType::Matched, ++TokenStream( tokens ) ) :
+                ParseState( ParseResultType::NoMatch, tokens ) );
             while( result.value().remainingTokens() ) {
                 bool tokenParsed = false;
 
-                for( size_t i = 0; i < totalParsers; ++i ) {
-                    auto&  parseInfo = parseInfos[i];
-                    if( parseInfo.parser->cardinality() == 0 || parseInfo.count < parseInfo.parser->cardinality() ) {
-                        result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
+                for (size_t i = 0; i < totalParsers; ++i) {
+                    ParserBase const* parser = parsers[i];
+                    if( parser->canParse() ) {
+                        result = parser->internalParse(exeName, result.value().remainingTokens());
                         if (!result)
                             return result;
                         if (result.value().type() != ParseResultType::NoMatch) {
                             tokenParsed = true;
-                            ++parseInfo.count;
                             break;
                         }
                     }
@@ -882,7 +1022,6 @@ namespace detail {
                 if( !tokenParsed )
                     return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
             }
-            // !TBD Check missing required options
             return result;
         }
     };
@@ -892,11 +1031,70 @@ namespace detail {
     auto ComposableParserImpl<DerivedT>::operator|( T const &other ) const -> Parser {
         return Parser() | static_cast<DerivedT const &>( *this ) | other;
     }
+
+    struct Cmd : public Parser {
+        Cmd( std::string& ref, std::string cmdName ) : Parser() {
+            ExeName exe{ ref };
+            exe.set( move( cmdName ), false );
+            m_exeName = exe;
+            m_isSubcmd = true;
+        }
+
+        template<typename Lambda>
+        Cmd( Lambda const& ref, std::string cmdName ) : Parser() {
+            ExeName exe{ ref };
+            exe.set( move( cmdName ), false );
+            m_exeName = exe;
+            m_isSubcmd = true;
+        }
+
+        auto hidden() -> Cmd& {
+            m_hidden = true;
+            return *this;
+        }
+
+        auto alludeInUsage(bool yes = true) -> Cmd& {
+            m_alludeInUsage = yes;
+            return *this;
+        }
+
+        auto operator()( std::string description ) -> Cmd& {
+            m_exeName.description( move( description ) );
+            return *this;
+        }
+    };
+
+    template<typename DerivedT>
+    auto operator,( ComposableParserImpl<DerivedT> const &l, Parser const &r ) -> Parser = delete;
+    template<typename DerivedT>
+    auto operator,( Parser const &l, ComposableParserImpl<DerivedT> const &r ) -> Parser = delete;
+    template<typename DerivedT, typename DerivedU>
+    auto operator,( ComposableParserImpl<DerivedT> const &l, ComposableParserImpl<DerivedU> const &r ) -> Parser = delete;
+
+    // concatenate parsers as subcommands;
+    // precondition: one or both must be subcommand parsers
+    inline auto operator,( Parser const &l, Parser const &r ) -> Parser {
+        assert( l.m_isSubcmd || r.m_isSubcmd );
+
+        Parser const *p1 = &l, *p2 = &r;
+        if ( p1->m_isSubcmd && !p2->m_isSubcmd ) {
+            std::swap( p1, p2 );
+        }
+
+        Parser p = p1->m_isSubcmd ? Parser{} : Parser{ *p1 };
+        if ( p1->m_isSubcmd )
+            p.m_cmds.push_back( *p1 );
+        p.m_cmds.push_back( *p2 );
+        return p;
+    }
+
 } // namespace detail
 
 
 // A Combined parser
 using detail::Parser;
+
+using detail::Cmd;
 
 // A parser for options
 using detail::Opt;

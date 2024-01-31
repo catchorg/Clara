@@ -175,7 +175,7 @@ class FileParser:
                 if m:
                     self.handleIf( m.group(1) )
                 else:
-                    print "****** error ***** " + line
+                    print( "****** error ***** " + line )
 
     def handleEndif( self, trailing ):
         global level
@@ -220,8 +220,8 @@ p.parse()
 
 o.close()
 
-print "-------------"
-print level
+print( "-------------" )
+print( level )
 #for h in systemHeaders:
 #    print "#include <" + h + ">"
 #print
